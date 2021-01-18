@@ -34,9 +34,11 @@ Future<String> write_file(
   return await file.readAsString();
 }
 
-Future<void> move_file(filename, folder_from, folder_to) async {
+Future<void> move_file(filename, folder_from, folder_to)  async {
   final Directory directory = await getExternalStorageDirectory();
-  File file = File(
+  print('Moving file: $filename from: $folder_from to: $folder_to');
+
+  File file = await File(
       '${directory.path}/${folder_from}/${filename}.txt'); //gone to file and aquired it
   if (await File(file.path).exists()) {
     if (await Directory("${directory.path}/${folder_to}").exists()) {
@@ -58,9 +60,9 @@ Future<void> delete_file(filename, folder) async {
     final Directory directory = await getExternalStorageDirectory();
 
     final Directory folder_dir =
-        await Directory('${directory.path}/${folder}').create(recursive: true);
+        await Directory('${directory.path}/${folder}');
 
-    File file = File('${folder_dir.path}/${filename}.txt');
+    File file = await File('${folder_dir.path}/${filename}.txt');
 
     if (await File(file.path).exists()) {
       await file.delete();
