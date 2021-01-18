@@ -1,34 +1,70 @@
 library web;
 
 import 'dart:async';
+import 'package:async/async.dart';
 import 'file_io.dart';
+import 'dart:convert';
+import 'dart:io';
 import 'package:uuid/uuid.dart';
 import 'package:connectivity/connectivity.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 
 final uuid = Uuid();
+final auth_token = '1NxqnduNW8XXQcwOMV0jSafNAZtE6VnUwkmSGdjvmPxPIjhlSqxj3g1mjIddCWmbgpKUzfX2cz2CoBOPiJsGxu0BwoavHpayN1G67ltDV0dxqQsBWb21FaBNdlZd8grdSZrYRGw2QvRaXQSkjrIU68d04xUppVTNRCKAikmL9IbsKZWZcsHRhUeWMJyaZp2CmupR604H';
 
 Future<int> upload_file(url, fileToUpload, folder) async {
   print('sending to $url');
-  var data = await readFile('$fileToUpload.txt', folder);
-  var response = await http
-      .post(url, body: {'payload': '$data', 'filename': '$fileToUpload.txt'});
-  print(response.statusCode);
+
+  final Directory directory = await getExternalStorageDirectory();
+  var pth = '${directory.path}/${folder}/${fileToUpload}.txt';
+
+  //var data = await readFile(fileToUpload, folder);
+  final file = new File(pth);
+
+  var request = new http.MultipartRequest("POST", Uri.parse(url));
+
+  var stream = new http.ByteStream(DelegatingStream.typed(file.openRead()));
+  var length = await file.length();
+
+  // multipart that takes file
+  var multipartFile = new http.MultipartFile('file', stream, length, filename: basename(file.path));
+
+  // add file to multipart
+  request.files.add(multipartFile);
+  request.headers['auth_token'] = auth_token;
+  try {
+    var moto = await read_ID("savedID");
+    request.headers['moto'] = moto;
+  } catch (err) {
+    print("error getting id");
+    print(err);
+  }
+
+
+  var response = await request.send();
+  var responseData = await response.stream.toBytes();
+  var responseString = String.fromCharCodes(responseData);
+  print(responseString);
+
   return response.statusCode;
 }
 
 Future<void> upload_delete(url, filename, folder) async {
   try {
-    upload_file(url, filename, folder).then((e) {
+    await upload_file(url, filename, folder).then((e) async {
       print("response ${e.toString()}");
       if (e == 200) {
-        delete_file(filename, folder);
+        print("Delete file ${filename}");
+        await delete_file(filename, folder);
       } else {
         print("upload error!!!!!!!!!");
       }
     });
   } catch (err) {
     print("upload_delete failed");
+    print(err);
   }
 }
 

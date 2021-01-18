@@ -29,7 +29,8 @@ final String stagging = "stagging";
 final String compile = "compile";
 final String savedID = "savedID";
 final double distance_threshold = 10.0;
-final String databaseurl = "http://digism.xyz:8081/apiv1";
+final String databaseurl = "https://kk9t74j5th.execute-api.ap-southeast-1.amazonaws.com/dev";
+final String pingurl = "8.8.4.4";
 
 /// This "Headless Task" is run when app is terminated.
 void backgroundFetchHeadlessTask(String taskId) async {
@@ -120,12 +121,17 @@ class _MainStructureState extends State<MainStructure> {
 
       final Directory directory = await getExternalStorageDirectory();
       Directory compileDir = Directory('${directory.path}/$compile');
+      //var dir = Directory('${directory.path}/$upload');
+      //  bool dirExists = await dir.exists();
+      //  if(!dirExists){
+      //     dir.create(/*recursive=true*/); //pass recursive as true if directory is recursive
+      //  }
       print(compileDir);
-      compileDir.list(recursive: true, followLinks: false).listen((e) {
+      compileDir.list(recursive: true, followLinks: false).listen((e) async {
         String name = e.path.split('/').last.split('.')[0];
         if (name != filename) {
-          move_file(name, compile, stagging);
-          print('moved file to stagging');
+          await move_file(name, compile, stagging);
+          print('moved file to stagging: ${name}');
         }
       });
     }
@@ -137,13 +143,15 @@ class _MainStructureState extends State<MainStructure> {
 
     staggingDir.list(recursive: true, followLinks: false).listen((e) async {
       String name = e.path.split('/').last.split('.')[0];
-      if (await movement_detection(name, stagging, distance_threshold)) {
-        move_file(name, stagging, upload);
-        print('moved file from stagging to upload ');
-      } else {
-        delete_file(name, stagging);
-        print("delete_stagging");
-      }
+      //if (await movement_detection(name, stagging, distance_threshold)) {
+        await move_file(name, stagging, upload);
+        print('moved file from stagging to upload: ${name}');
+      //} else {
+      //  delete_file(name, stagging);
+      //  print("delete_stagging");
+      //}
+
+
     });
   }
 
@@ -151,7 +159,7 @@ class _MainStructureState extends State<MainStructure> {
     if (!await check_folder_empty(upload)) {
       print('checked!');
       if (await is_connected()) {
-        if (await ping_server(databaseurl)) {
+        if (await ping_server(pingurl)) {
           print("uploading to server");
           final Directory directory = await getExternalStorageDirectory();
           Directory uploadDir = Directory('${directory.path}/$upload');
@@ -159,13 +167,13 @@ class _MainStructureState extends State<MainStructure> {
           uploadDir.list(recursive: true, followLinks: false).listen((e) async {
             String name = e.path.split('/').last.split('.')[0];
             print("uploading");
-            upload_delete(databaseurl, name, upload);
+            await upload_delete(databaseurl, name, upload);
           });
         }
       }
     }
   }
-  
+
   Future<void> initPlatformState() async {
     // Configure BackgroundFetch.
     BackgroundFetch.configure(BackgroundFetchConfig(
@@ -282,7 +290,7 @@ class _MainStructureState extends State<MainStructure> {
     });
 
     Timer.periodic(Duration(milliseconds: 3000), (timer) async {
-      bool conn_server = await ping_server(databaseurl);
+      bool conn_server = await ping_server(pingurl);
       setState(() {
         connected_server = conn_server != null ? conn_server : false;
       });
