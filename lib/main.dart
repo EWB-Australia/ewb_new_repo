@@ -30,7 +30,7 @@ final String compile = "compile";
 final String savedID = "savedID";
 final double distance_threshold = 10.0;
 final String databaseurl = "https://kk9t74j5th.execute-api.ap-southeast-1.amazonaws.com/dev";
-final String pingurl = "8.8.4.4";
+final String pingurl = "http://google.com";
 
 /// This "Headless Task" is run when app is terminated.
 void backgroundFetchHeadlessTask(String taskId) async {

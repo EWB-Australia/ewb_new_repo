@@ -34,7 +34,6 @@ dependencies:
   background_fetch: ^0.6.0
     #   url: https://github.com/transistorsoft/flutter_background_fetch
   battery: ^1.0.7
-  simple_s3: 0.2.2
 
 
   # The following adds the Cupertino Icons font to your application.

@@ -78,7 +78,7 @@ Future<bool> is_connected() async {
 
 Future<bool> ping_server(url) async {
   try {
-    print('pinging $url/ping');
+    print('pinging $url');
     var response = await http.get(url);
     print(response.statusCode);
     if (response.statusCode == 200) {
