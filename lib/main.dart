@@ -14,6 +14,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:background_fetch/background_fetch.dart';
 import 'package:uuid/uuid.dart';
+import 'package:device_info/device_info.dart';
 
 var uuid = Uuid();
 
@@ -24,6 +25,7 @@ final thread2_delay = Duration(seconds: 10);
 final thread3_delay = Duration(seconds: 25);
 final thread4_delay = Duration(seconds: 30);
 String vehicleID;
+String vehicleUID;
 final String upload = "upload";
 final String stagging = "stagging";
 final String compile = "compile";
@@ -256,6 +258,10 @@ class _MainStructureState extends State<MainStructure> {
     filename = generate_filename();
 
     sort_ID(savedID);
+
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+    vehicleUID = androidInfo.androidId;
 
     accelerometerEvents.listen((event) {
       setState(() {
