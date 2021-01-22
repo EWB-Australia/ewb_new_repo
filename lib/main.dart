@@ -26,7 +26,7 @@ var uuid = Uuid();
 
 final bat_delay = Duration(seconds: 3);
 final thread2_delay = Duration(seconds: 10);
-final thread4_delay = Duration(seconds: 30);
+final thread4_delay = Duration(seconds: 60);
 final String upload = "upload";
 final String stagging = "stagging";
 final String compile = "compile";
@@ -83,6 +83,7 @@ class _MainStructureState extends State<MainStructure> {
   int batLevel;
   final myController = TextEditingController();
   Queue accelQueue = new Queue();
+  Queue gpsQueue = new Queue();
   Directory tmpDir;
   int countEvents = 0;
   String vehicleID; // Vehicle ID which is editable on user screen
@@ -95,15 +96,6 @@ class _MainStructureState extends State<MainStructure> {
     super.dispose();
   }
 
-
-  Future<File> batteryLevel() async {
-    getBattery().then((value) {
-      setState(() {
-        batLevel = value;
-      });
-      return writeFileRandomName('${tmpDir.path}/${compile}', "txt", value.toString());
-    });
-  }
 
   Future<void> thread2() async {
 
@@ -122,60 +114,91 @@ class _MainStructureState extends State<MainStructure> {
     }
   }
 
+  // Return a list of object from a Q for processing
+  List<dynamic> popQueue(Queue) {
+
+    // Temp list of objects
+    List<dynamic> ld = new List<dynamic>();
+
+    // Get length of Q
+    var length_q = Queue.length;
+
+    // Move items from the Q to temp list
+    for( var i = length_q ; i >= 1; i-- ) {
+      ld.add(Queue.first);
+      Queue.removeFirst();
+    }
+
+    return ld;
+  }
+
 
   Future<void> thread4() async {
-    if (!await check_folder_empty(upload)) {
-      print('checked!');
+    if (accelQueue.length > 0 || gpsQueue.length > 0 ) {
       if (await is_connected()) {
         if (await ping_server(pingurl)) {
 
-          //final Directory directory = await getExternalStorageDirectory();
-
           Directory uploadDir = Directory('${tmpDir.path}/$upload');
+
+          List<dynamic> gList, aList;
 
           Random random = new Random();
           int randomNumber = random.nextInt(9000)+1000;
 
-          // Temp list of objects
-          List<Accel> la = new List<Accel>();
-
-          // Get length of Q
-          var length_q = accelQueue.length;
-
-          // Move items from the Q to temp list
-          for( var i = length_q ; i >= 1; i-- ) {
-            la.add(accelQueue.first);
-            accelQueue.removeFirst();
-          }
-
-          final File file = await File('${tmpDir.path}/accel.json').create(recursive: true);
-
-          // Write the file.
-          file.writeAsString(jsonEncode(la));
-
-          print("compressing");
-          final files = [
-            file,
+          List<File> files = [
           ];
-          final zipFile = createZipFile('${tmpDir.path}/${randomNumber.toString()}.zip');
 
-          try {
-            await ZipFile.createFromFiles(
-                sourceDir: tmpDir, files: files, zipFile: zipFile);
-          } catch (e) {
-            print(e);
+          if(accelQueue.length > 0) {
+            // Get list of acceleoremter readings from Q
+            aList = popQueue(accelQueue);
+          };
+
+          if(gpsQueue.length > 0) {
+            // Get list of acceleoremter readings from Q
+            gList = popQueue(gpsQueue);
           }
 
-          // Move file
-          await zipFile.rename('${tmpDir.path}/upload/${randomNumber.toString()}.zip');
+          final File payloadFile = await File('${tmpDir.path}/payload.json').create(recursive: true);
 
-          print("uploading to server");
-          // Don't follow links and dont scan sub-folders
-          uploadDir.list(recursive: false, followLinks: false).listen((e) async {
-            String name = e.path.split('/').last.split('.')[0];
-            print("uploading");
-            await upload_delete(databaseurl, e.path);
-          });
+          // Pacakge all the data we need to send into a json file
+          final payload = {
+            'moto': vehicleUID,
+            'trip': vehicleUID,
+            'batteryLevel': await getBattery(),
+            'gps_values': gList,
+            'acceleration_values': aList
+          };
+          // Write the file.
+          payloadFile.writeAsString(json.encode(payload));
+
+          files.add(payloadFile);
+
+          if(files.length > 0) {
+            print("compressing");
+
+            final zipFile =
+                createZipFile('${tmpDir.path}/${randomNumber.toString()}.zip');
+
+            try {
+              await ZipFile.createFromFiles(
+                  sourceDir: tmpDir, files: [payloadFile,], zipFile: zipFile);
+            } catch (e) {
+              print(e);
+            }
+
+            // Move file
+            await zipFile
+                .rename('${tmpDir.path}/upload/${randomNumber.toString()}.zip');
+
+            print("uploading to server");
+            // Don't follow links and dont scan sub-folders
+            uploadDir
+                .list(recursive: false, followLinks: false)
+                .listen((e) async {
+              print("uploading");
+              await upload_delete(databaseurl, e.path);
+            });
+          }
         }
       }
     }
@@ -278,13 +301,15 @@ class _MainStructureState extends State<MainStructure> {
 
     // Subscribe to the GPS location stream, request update every second
     StreamSubscription<Position> positionStream = Geolocator.getPositionStream(desiredAccuracy: LocationAccuracy.bestForNavigation, intervalDuration: Duration(seconds: 1)).listen(
+
             (Position position) {
           print(position == null ? 'Unknown' : position.latitude.toString() + ', ' + position.longitude.toString());
 
           // Create position object
           Point p = Point(trip: vehicleUID, latitude: position.latitude, longitude: position.longitude, accuracy: position.accuracy, altitude: position.altitude, speed: position.speed, speedAccuracy: position.speedAccuracy, heading: position.heading, time: DateTime.now());
           // Add to processing queue
-          writeFileRandomName('${tmpDir.path}/${compile}', "json", p.toRawJson());
+          accelQueue.add(p);
+
 
           setState(() {
             latitude = position.latitude;
@@ -292,10 +317,6 @@ class _MainStructureState extends State<MainStructure> {
           });
         });
 
-
-    Timer.periodic(bat_delay, (Timer batTimer) {
-      batteryLevel();
-    });
 
     Timer.periodic(thread2_delay, (Timer thread2Timer) {
       thread2();
