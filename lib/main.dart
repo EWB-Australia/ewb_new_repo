@@ -115,18 +115,18 @@ class _MainStructureState extends State<MainStructure> {
   }
 
   // Return a list of object from a Q for processing
-  List<dynamic> popQueue(Queue) {
+  List<dynamic> popQueue(q) {
 
     // Temp list of objects
     List<dynamic> ld = new List<dynamic>();
 
     // Get length of Q
-    var length_q = Queue.length;
+    var length_q = q.length;
 
     // Move items from the Q to temp list
     for( var i = length_q ; i >= 1; i-- ) {
-      ld.add(Queue.first);
-      Queue.removeFirst();
+      ld.add(q.first);
+      q.removeFirst();
     }
 
     return ld;
@@ -140,7 +140,8 @@ class _MainStructureState extends State<MainStructure> {
 
           Directory uploadDir = Directory('${tmpDir.path}/$upload');
 
-          List<dynamic> gList, aList;
+          List<dynamic> gList = new List<dynamic>();
+          List<dynamic> aList  = new List<dynamic>();
 
           Random random = new Random();
           int randomNumber = random.nextInt(9000)+1000;
@@ -154,7 +155,7 @@ class _MainStructureState extends State<MainStructure> {
           };
 
           if(gpsQueue.length > 0) {
-            // Get list of acceleoremter readings from Q
+            // Get list of gps readings from Q
             gList = popQueue(gpsQueue);
           }
 
@@ -308,7 +309,7 @@ class _MainStructureState extends State<MainStructure> {
           // Create position object
           Point p = Point(trip: vehicleUID, latitude: position.latitude, longitude: position.longitude, accuracy: position.accuracy, altitude: position.altitude, speed: position.speed, speedAccuracy: position.speedAccuracy, heading: position.heading, time: DateTime.now());
           // Add to processing queue
-          accelQueue.add(p);
+          gpsQueue.add(p);
 
 
           setState(() {
