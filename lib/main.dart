@@ -1,38 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:sensors/sensors.dart';
-import 'package:location/location.dart';
 import 'dart:async';
+import 'dart:math';
 import 'file_io.dart';
-import 'file_io.dart';
-import 'file_io.dart';
-import 'file_io.dart';
-import 'sensor.dart';
 import 'sensor.dart';
 import 'web.dart';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:collection';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart';
 import 'package:background_fetch/background_fetch.dart';
 import 'package:uuid/uuid.dart';
 import 'package:device_info/device_info.dart';
+import 'package:ewb_app/models/point.dart';
+import 'package:ewb_app/models/accel.dart';
+import 'package:stream_transform/stream_transform.dart';
+import 'package:flutter_archive/flutter_archive.dart';
+import 'utils/zip.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
 
 var uuid = Uuid();
 
-final accel_delay = Duration(seconds: 3);
-final gps_delay = Duration(seconds: 3);
 final bat_delay = Duration(seconds: 3);
 final thread2_delay = Duration(seconds: 10);
-final thread3_delay = Duration(seconds: 25);
 final thread4_delay = Duration(seconds: 30);
-String vehicleID;
-String vehicleUID;
 final String upload = "upload";
 final String stagging = "stagging";
 final String compile = "compile";
 final String savedID = "savedID";
 final double distance_threshold = 10.0;
 final String databaseurl = "https://kk9t74j5th.execute-api.ap-southeast-1.amazonaws.com/dev";
+final auth_token = '1NxqnduNW8XXQcwOMV0jSafNAZtE6VnUwkmSGdjvmPxPIjhlSqxj3g1mjIddCWmbgpKUzfX2cz2CoBOPiJsGxu0BwoavHpayN1G67ltDV0dxqQsBWb21FaBNdlZd8grdSZrYRGw2QvRaXQSkjrIU68d04xUppVTNRCKAikmL9IbsKZWZcsHRhUeWMJyaZp2CmupR604H';
 final String pingurl = "http://google.com";
+SharedPreferences prefs;
+
 
 /// This "Headless Task" is run when app is terminated.
 void backgroundFetchHeadlessTask(String taskId) async {
@@ -41,6 +45,7 @@ void backgroundFetchHeadlessTask(String taskId) async {
 }
 
 void main() => runApp(MyApp());
+
 
 class MyApp extends StatelessWidget {
   @override
@@ -65,14 +70,11 @@ class MainStructure extends StatefulWidget {
   _MainStructureState createState() => _MainStructureState();
 }
 
-
-
 class _MainStructureState extends State<MainStructure> {
   //State Variables
   double x, y, z = 0;
-  List<double> accelValues;
-  Location location = new Location();
-  var latlong;
+  double latitude = 0;
+  double longitude = 0;
   String filename;
   bool connected_server = false;
   bool _enabled = true;
@@ -80,6 +82,11 @@ class _MainStructureState extends State<MainStructure> {
   List<DateTime> _events = [];
   int batLevel;
   final myController = TextEditingController();
+  Queue accelQueue = new Queue();
+  Directory tmpDir;
+  int countEvents = 0;
+  String vehicleID; // Vehicle ID which is editable on user screen
+  String vehicleUID; // Unique vehicle ID based on build.androidID
 
   @override
   void dispose() {
@@ -89,87 +96,85 @@ class _MainStructureState extends State<MainStructure> {
   }
 
 
-  //Main Threads
-  Future<void> accelData() async {
-    setState(() {
-      accelValues = [x, y, z];
-    });
-    write_file(accelValues, 'accel', filename, compile, vehicleID);
-  }
-
-  Future<void> gpsData() async {
-    getGPS(location).then((value) {
-      setState(() {
-        latlong = value;
-      });
-      write_file(latlong, 'gps', filename, compile, vehicleID);
-    });
-  }
-
-  Future<void> batteryLevel() async {
+  Future<File> batteryLevel() async {
     getBattery().then((value) {
       setState(() {
         batLevel = value;
       });
-      write_file([value], 'battery', filename, compile, vehicleID);
+      return writeFileRandomName('${tmpDir.path}/${compile}', "txt", value.toString());
     });
   }
 
   Future<void> thread2() async {
-    if (!await check_folder_empty(compile)) {
-      setState(() {
-        filename = generate_filename();
-      });
 
-      final Directory directory = await getExternalStorageDirectory();
-      Directory compileDir = Directory('${directory.path}/$compile');
-      //var dir = Directory('${directory.path}/$upload');
-      //  bool dirExists = await dir.exists();
-      //  if(!dirExists){
-      //     dir.create(/*recursive=true*/); //pass recursive as true if directory is recursive
-      //  }
+    Directory compileDir = Directory('${tmpDir.path}/$compile');
+
+    if (!await check_folder_empty(compileDir.path)) {
+
       print(compileDir);
-      compileDir.list(recursive: true, followLinks: false).listen((e) async {
-        String name = e.path.split('/').last.split('.')[0];
-        if (name != filename) {
-          await move_file(name, compile, stagging);
-          print('moved file to stagging: ${name}');
-        }
+
+      compileDir.list(recursive: false, followLinks: false).listen((e) async {
+
+          await e.rename(e.path.replaceAll(compile, upload));
+          print('moved file to upload: ${basename(e.path)}');
+
       });
     }
   }
 
-  Future<void> thread3() async {
-    final Directory directory = await getExternalStorageDirectory();
-    Directory staggingDir = Directory('${directory.path}/$stagging');
-
-    staggingDir.list(recursive: true, followLinks: false).listen((e) async {
-      String name = e.path.split('/').last.split('.')[0];
-      //if (await movement_detection(name, stagging, distance_threshold)) {
-        await move_file(name, stagging, upload);
-        print('moved file from stagging to upload: ${name}');
-      //} else {
-      //  delete_file(name, stagging);
-      //  print("delete_stagging");
-      //}
-
-
-    });
-  }
 
   Future<void> thread4() async {
     if (!await check_folder_empty(upload)) {
       print('checked!');
       if (await is_connected()) {
         if (await ping_server(pingurl)) {
-          print("uploading to server");
-          final Directory directory = await getExternalStorageDirectory();
-          Directory uploadDir = Directory('${directory.path}/$upload');
 
-          uploadDir.list(recursive: true, followLinks: false).listen((e) async {
+          //final Directory directory = await getExternalStorageDirectory();
+
+          Directory uploadDir = Directory('${tmpDir.path}/$upload');
+
+          Random random = new Random();
+          int randomNumber = random.nextInt(9000)+1000;
+
+          // Temp list of objects
+          List<Accel> la = new List<Accel>();
+
+          // Get length of Q
+          var length_q = accelQueue.length;
+
+          // Move items from the Q to temp list
+          for( var i = length_q ; i >= 1; i-- ) {
+            la.add(accelQueue.first);
+            accelQueue.removeFirst();
+          }
+
+          final File file = await File('${tmpDir.path}/accel.json').create(recursive: true);
+
+          // Write the file.
+          file.writeAsString(jsonEncode(la));
+
+          print("compressing");
+          final files = [
+            file,
+          ];
+          final zipFile = createZipFile('${tmpDir.path}/${randomNumber.toString()}.zip');
+
+          try {
+            await ZipFile.createFromFiles(
+                sourceDir: tmpDir, files: files, zipFile: zipFile);
+          } catch (e) {
+            print(e);
+          }
+
+          // Move file
+          await zipFile.rename('${tmpDir.path}/upload/${randomNumber.toString()}.zip');
+
+          print("uploading to server");
+          // Don't follow links and dont scan sub-folders
+          uploadDir.list(recursive: false, followLinks: false).listen((e) async {
             String name = e.path.split('/').last.split('.')[0];
             print("uploading");
-            await upload_delete(databaseurl, name, upload);
+            await upload_delete(databaseurl, e.path);
           });
         }
       }
@@ -177,6 +182,30 @@ class _MainStructureState extends State<MainStructure> {
   }
 
   Future<void> initPlatformState() async {
+
+    tmpDir = await getTemporaryDirectory();
+
+    // obtain shared preferences
+    prefs = await SharedPreferences.getInstance();
+
+    // set value
+    prefs.setString('savedID', savedID);
+
+    // Get device info
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+
+    // Set vehicle ID, this is used to identify vehicle in backend
+    vehicleUID = androidInfo.androidId;
+    vehicleID = prefs.getString('vehicleID') ?? vehicleUID;
+
+    prefs.setString('vehicleUID', vehicleUID);
+
+    // Create working directories
+    await createFolderInCache(compile);
+    await createFolderInCache(stagging);
+    await createFolderInCache(upload);
+
     // Configure BackgroundFetch.
     BackgroundFetch.configure(BackgroundFetchConfig(
         minimumFetchInterval: 15,
@@ -220,64 +249,49 @@ class _MainStructureState extends State<MainStructure> {
     if (!mounted) return;
   }
 
-  Future<void> sort_ID(string) async {
-    try {
-      if (await check_ID(string)) {
-        setState(() async {
-          vehicleID = await read_ID(string);
-        });
-      } else {
-        String id = uuid.v1();
-        setState(() async {
-          vehicleID = id;
-        });
-        save_ID(savedID, id);
-      }
-    } catch (err) {
-      print("Sort problem");
-    }
-  }
-
-  Future<void> changeID(string, id) async {
-    setState(() {
-      vehicleID = id;
-    });
-    if (await check_ID(string)) {
-      delete_ID(string);
-      save_ID(string, id);
-    } else {
-      save_ID(string, id);
-    }
-  }
-
   //Initialization
   @override
   void initState() {
     super.initState();
     initPlatformState();
-    filename = generate_filename();
+    filename = generateFilename();
 
-    sort_ID(savedID);
 
-    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
-    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-    vehicleUID = androidInfo.androidId;
+    // Subscribe to accelerometer event stream
+    // Throttle stream using "audit" so we only get one event every 25ms
+    accelerometerEvents.audit(const Duration(milliseconds: 25)).listen((AccelerometerEvent event) {
+      // Count the number of events received, for debug only
+      countEvents = countEvents + 1;
+      // Create an accelerometer object from event data
+      Accel ac = Accel(time: DateTime.now(), x: event.x, y: event.y, z: event.z, moto: vehicleUID );
+      // Push the accel object into the queue
+      accelQueue.add(ac);
 
-    accelerometerEvents.listen((event) {
+      // Update x,y,z state variables (for display)
       setState(() {
-        x = event.x;
-        y = event.y;
-        z = event.z;
+      x = event.x;
+      y = event.y;
+      z = event.z;
+
       });
     });
 
-    Timer.periodic(accel_delay, (Timer accelTimer) {
-      accelData();
-    });
+    // Subscribe to the GPS location stream, request update every second
+    StreamSubscription<Position> positionStream = Geolocator.getPositionStream(desiredAccuracy: LocationAccuracy.bestForNavigation, intervalDuration: Duration(seconds: 1)).listen(
+            (Position position) {
+          print(position == null ? 'Unknown' : position.latitude.toString() + ', ' + position.longitude.toString());
 
-    Timer.periodic(gps_delay, (Timer gpsTimer) {
-      gpsData();
-    });
+          // Create position object
+          Point p = Point(trip: vehicleUID, latitude: position.latitude, longitude: position.longitude, accuracy: position.accuracy, altitude: position.altitude, speed: position.speed, speedAccuracy: position.speedAccuracy, heading: position.heading, time: DateTime.now());
+          // Add to processing queue
+          writeFileRandomName('${tmpDir.path}/${compile}', "json", p.toRawJson());
+
+          setState(() {
+            latitude = position.latitude;
+            longitude = position.longitude;
+          });
+        });
+
 
     Timer.periodic(bat_delay, (Timer batTimer) {
       batteryLevel();
@@ -287,11 +301,7 @@ class _MainStructureState extends State<MainStructure> {
       thread2();
     });
 
-    Timer.periodic(thread3_delay, (Timer thread3Timer) {
-      thread3();
-    });
-
-    Timer.periodic(thread4_delay, (Timer thread3Timer) {
+    Timer.periodic(thread4_delay, (Timer thread4Timer) {
       thread4();
     });
 
@@ -330,8 +340,8 @@ class _MainStructureState extends State<MainStructure> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text("X-Axis"),
-                      Text(accelValues != null
-                          ? accelValues[0].toStringAsFixed(3)
+                      Text(x != null
+                          ? x.toStringAsFixed(3)
                           : 'nothing...'),
                     ],
                   ),
@@ -342,8 +352,8 @@ class _MainStructureState extends State<MainStructure> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text("Y-Axis"),
-                      Text(accelValues != null
-                          ? accelValues[1].toStringAsFixed(3)
+                      Text(y != null
+                          ? y.toStringAsFixed(3)
                           : 'nothing...'),
                     ],
                   ),
@@ -354,8 +364,8 @@ class _MainStructureState extends State<MainStructure> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text("Z-Axis"),
-                      Text(accelValues != null
-                          ? accelValues[2].toStringAsFixed(3)
+                      Text(z != null
+                          ? z.toStringAsFixed(3)
                           : 'nothing...'),
                     ],
                   ),
@@ -365,11 +375,11 @@ class _MainStructureState extends State<MainStructure> {
                   "GPS Data",
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 32),
                 ),
-                Text(latlong != null
-                    ? "latitude: " + latlong[0].toString()
+                Text(latitude != null
+                    ? "latitude: " + latitude.toString()
                     : 'nothing...'),
-                Text(latlong != null
-                    ? "longitude: " + latlong[1].toString()
+                Text(longitude != null
+                    ? "longitude: " + longitude.toString()
                     : 'nothing...'),
                 Text(''),
                 Padding(
@@ -379,7 +389,8 @@ class _MainStructureState extends State<MainStructure> {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 32),
                   ),
                 ),
-                Text(vehicleID),
+                Text(vehicleID != null
+                ? vehicleID : "Loading ......."),
                 Text(''),
                 TextField(
                   controller: myController,
@@ -387,7 +398,10 @@ class _MainStructureState extends State<MainStructure> {
                 Text(''),
                 FloatingActionButton.extended(
                   onPressed: () {
-                    changeID(savedID, myController.text.toString());
+                    prefs.setString('vehicleID', myController.text.toString());
+                    setState(() {
+                      vehicleID = myController.text.toString();
+                    });
                     myController.clear();
                   },
                   label: Text('Change ID'),

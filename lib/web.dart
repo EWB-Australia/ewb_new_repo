@@ -10,38 +10,28 @@ import 'package:connectivity/connectivity.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_archive/flutter_archive.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final uuid = Uuid();
 final auth_token = '1NxqnduNW8XXQcwOMV0jSafNAZtE6VnUwkmSGdjvmPxPIjhlSqxj3g1mjIddCWmbgpKUzfX2cz2CoBOPiJsGxu0BwoavHpayN1G67ltDV0dxqQsBWb21FaBNdlZd8grdSZrYRGw2QvRaXQSkjrIU68d04xUppVTNRCKAikmL9IbsKZWZcsHRhUeWMJyaZp2CmupR604H';
 
-Future<int> upload_file(url, fileToUpload, folder) async {
-  print('sending to $url');
+Future<int> upload_file(url, filePath) async {
+  print('Uploading to $url');
 
-  final Directory directory = await getExternalStorageDirectory();
-  var pth = '${directory.path}/${folder}/${fileToUpload}.txt';
-
-  //var data = await readFile(fileToUpload, folder);
-  final file = new File(pth);
+  final file = new File(filePath);
 
   var request = new http.MultipartRequest("POST", Uri.parse(url));
 
-  var stream = new http.ByteStream(DelegatingStream.typed(file.openRead()));
-  var length = await file.length();
-
-  // multipart that takes file
-  var multipartFile = new http.MultipartFile('file', stream, length, filename: basename(file.path));
-
   // add file to multipart
-  request.files.add(multipartFile);
+  request.files.add(new http.MultipartFile.fromBytes('file', await file.readAsBytes(), filename: basename(file.path)));
   request.headers['auth_token'] = auth_token;
-  try {
-    var moto = await read_ID("savedID");
-    request.headers['moto'] = moto;
-  } catch (err) {
-    print("error getting id");
-    print(err);
-  }
 
+  final prefs = await SharedPreferences.getInstance();
+
+  // Try reading data from the counter key. If it doesn't exist, return 0.
+  final moto = prefs.getString('vehicleUID') ?? 0;
+  request.headers['moto'] = moto;
 
   var response = await request.send();
   var responseData = await response.stream.toBytes();
@@ -51,13 +41,13 @@ Future<int> upload_file(url, fileToUpload, folder) async {
   return response.statusCode;
 }
 
-Future<void> upload_delete(url, filename, folder) async {
+Future<void> upload_delete(url, filePath) async {
   try {
-    await upload_file(url, filename, folder).then((e) async {
+    await upload_file(url, filePath).then((e) async {
       print("response ${e.toString()}");
       if (e == 200) {
-        print("Delete file ${filename}");
-        await delete_file(filename, folder);
+        print("Delete file ${basename(filePath)}");
+        await delete_file(filePath);
       } else {
         print("upload error!!!!!!!!!");
       }

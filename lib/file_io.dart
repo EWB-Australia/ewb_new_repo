@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:uuid/uuid.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final uuid = Uuid();
 
@@ -15,68 +16,58 @@ Random _rnd = Random();
 String getRandomString(int length) => String.fromCharCodes(Iterable.generate(
     length, (_) => _chars.codeUnitAt(_rnd.nextInt(_chars.length))));
 
-String generate_filename() {
+String generateFilename() {
   //PLACEHOLDER
-  return getRandomString(5);
+  return getRandomString(6);
 }
 
-Future<String> write_file(
-    data_array, data_type, filename, folder, vehicleId) async {
-  final Directory directory = await getExternalStorageDirectory();
-  var new_file = '${directory.path}/${folder}/${filename}.txt';
-  final File file = await File(new_file).create(recursive: true);
+Future<Directory> createFolderInCache(String folderName) async {
 
-  final data = await file.readAsString();
-  final sink = file.openWrite();
-  sink.write(data +
-      "$vehicleId, ${uuid.v4()}, ${DateTime.now()}, ${DateTime.now().timeZoneOffset}, $data_type, ${data_array.join(",")}||");
-  sink.close();
-  return await file.readAsString();
+//Get this App Document Directory
+final Directory _appCacheDir = await getTemporaryDirectory();
+final Directory _appCacheDirFolder =  Directory('${_appCacheDir.path}/$folderName/');
+
+print('Directory to create: $_appCacheDirFolder');
+
+if(await _appCacheDirFolder.exists()){ //if folder already exists return path
+  return _appCacheDirFolder;
+}else{//if folder not exists create folder and then return its path
+  final Directory _appCacheDirNewFolder=await _appCacheDirFolder.create(recursive: true);
+return _appCacheDirNewFolder;
+}
 }
 
-Future<void> move_file(filename, folder_from, folder_to)  async {
-  final Directory directory = await getExternalStorageDirectory();
-  print('Moving file: $filename from: $folder_from to: $folder_to');
+Future<File> writeFile(filePath, data) async {
 
-  File file = await File(
-      '${directory.path}/${folder_from}/${filename}.txt'); //gone to file and aquired it
-  if (await File(file.path).exists()) {
-    if (await Directory("${directory.path}/${folder_to}").exists()) {
-      await file.rename(
-          '${directory.path}/${folder_to}/$filename.txt'); //moving file to where it needs to go
-    } else {
-      final Directory folder_to_dir =
-          await Directory("${directory.path}/${folder_to}")
-              .create(recursive: true);
-      await file.rename(
-          '${folder_to_dir.path}/$filename.txt'); //moving file to where it needs to go
-    }
-  }
-  return;
+  final File file = await File(filePath).create(recursive: true);
+
+  // Write the file.
+  return file.writeAsString(data);
 }
 
-Future<void> delete_file(filename, folder) async {
+Future<File> writeFileRandomName(folderPath, extension, data) async {
+
+  var filename = generateFilename();
+
+  final File file = await File('${folderPath}/${filename}.${extension}').create(recursive: true);
+
+  // Write the file.
+  return file.writeAsString(data);
+}
+
+Future<void> delete_file(filePath) async {
   try {
-    final Directory directory = await getExternalStorageDirectory();
-
-    final Directory folder_dir =
-        await Directory('${directory.path}/${folder}');
-
-    File file = await File('${folder_dir.path}/${filename}.txt');
-
-    if (await File(file.path).exists()) {
-      await file.delete();
-    }
-    return;
-  } catch (err) {
+    File file = await File(filePath);
+    await file.delete();
+  } catch (err)
+  {
     print(err);
   }
 }
 
-Future<String> readFile(filename, folder) async {
+Future<String> readFile(filePath) async {
   try {
-    final directory = await getExternalStorageDirectory();
-    File file = new File('${directory.path}/$folder/$filename');
+    File file = new File(filePath);
     if (!await file.exists()) await file.create(recursive: true);
     return await file.readAsString();
   } catch (err) {
@@ -84,10 +75,9 @@ Future<String> readFile(filename, folder) async {
   }
 }
 
-Future<bool> check_folder_empty(folder) async {
+Future<bool> check_folder_empty(folderPath) async {
   try {
-    final Directory directory = await getExternalStorageDirectory();
-    Directory dir = Directory('${directory.path}/${folder}');
+    Directory dir = Directory(folderPath);
     List files = dir.listSync();
     return files.isEmpty;
   } catch (err) {
