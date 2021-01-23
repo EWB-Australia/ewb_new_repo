@@ -21,12 +21,14 @@ import 'package:flutter_archive/flutter_archive.dart';
 import 'utils/zip.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_logs/flutter_logs.dart';
 
 var uuid = Uuid();
 
 final bat_delay = Duration(seconds: 3);
 final thread2_delay = Duration(seconds: 10);
 final thread4_delay = Duration(seconds: 60);
+final exportLogsDelay = Duration(hours: 1);
 final String upload = "upload";
 final String stagging = "stagging";
 final String compile = "compile";
@@ -44,7 +46,9 @@ void backgroundFetchHeadlessTask(String taskId) async {
   BackgroundFetch.finish(taskId);
 }
 
-void main() => runApp(MyApp());
+void main() {
+  runApp(MyApp());
+}
 
 
 class MyApp extends StatelessWidget {
@@ -132,6 +136,12 @@ class _MainStructureState extends State<MainStructure> {
     return ld;
   }
 
+  Future<void> exportLogFiles() async {
+
+    FlutterLogs.exportLogs(
+        exportType: ExportType.ALL);
+
+  }
 
   Future<void> thread4() async {
     if (accelQueue.length > 0 || gpsQueue.length > 0 ) {
@@ -196,7 +206,7 @@ class _MainStructureState extends State<MainStructure> {
             uploadDir
                 .list(recursive: false, followLinks: false)
                 .listen((e) async {
-              print("uploading");
+              FlutterLogs.logInfo("UPLOAD", "Start", "Uploading ${zipFile.path}");
               await upload_delete(databaseurl, e.path);
             });
           }
@@ -206,6 +216,23 @@ class _MainStructureState extends State<MainStructure> {
   }
 
   Future<void> initPlatformState() async {
+
+    //Initialize Logging
+    await FlutterLogs.initLogs(
+        logLevelsEnabled: [
+          LogLevel.INFO,
+          LogLevel.WARNING,
+          LogLevel.ERROR,
+          LogLevel.SEVERE
+        ],
+        timeStampFormat: TimeStampFormat.TIME_FORMAT_READABLE,
+        directoryStructure: DirectoryStructure.FOR_DATE,
+        logTypesEnabled: ["device","network","errors"],
+        logFileExtension: LogFileExtension.LOG,
+        logsWriteDirectoryName: "EWB_Logs",
+        logsExportDirectoryName: "EWB_LOGS/Exported",
+        debugFileOperations: true,
+        isDebuggable: true);
 
     tmpDir = await getTemporaryDirectory();
 
@@ -277,8 +304,11 @@ class _MainStructureState extends State<MainStructure> {
   @override
   void initState() {
     super.initState();
+
     initPlatformState();
     filename = generateFilename();
+
+    FlutterLogs.logInfo("INIT", "initState", "Setting State variables");
 
 
     // Subscribe to accelerometer event stream
@@ -325,6 +355,10 @@ class _MainStructureState extends State<MainStructure> {
 
     Timer.periodic(thread4_delay, (Timer thread4Timer) {
       thread4();
+    });
+
+    Timer.periodic(exportLogsDelay, (Timer exportLogsTimer) {
+      exportLogFiles();
     });
 
     Timer.periodic(Duration(milliseconds: 3000), (timer) async {

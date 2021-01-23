@@ -8,8 +8,8 @@ import 'dart:convert';
 class Moto {
   Moto({
     @required this.uid,
-    @required this.name,
-    @required this.rego,
+    this.name,
+    this.rego,
   });
 
   String uid;
