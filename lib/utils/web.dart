@@ -17,8 +17,7 @@ final uuid = Uuid();
 
 Future<int> upload_file(url, filePath) async {
   final file = new File(filePath);
-  print("url");
-print(url);
+
   // Get size of upload
   final fileSize = file.lengthSync();
   var request = new http.MultipartRequest("POST", Uri.parse(url));
@@ -26,15 +25,14 @@ print(url);
   // add file to multipart
   request.files.add(new http.MultipartFile.fromBytes('file', await file.readAsBytes(), filename: basename(file.path)));
   // add auth code from settings
-  request.headers['auth_token'] = SL.getIt<Settings>().authCode;
-
-  final prefs = await SharedPreferences.getInstance();
+  request.headers['auth-token'] = SL.getIt<Settings>().authCode;
 
   var moto = SL.getIt<Moto>().uid;
-  var settings = SL.getIt<Settings>();
 
-  settings.bytesUploaded += fileSize;
-  prefs.setInt('bytesUploaded', settings.bytesUploaded);
+  // Update the total bytse in settings
+  SL.getIt<Settings>().bytesUploaded += fileSize;
+  SL.getIt<Settings>().saveToPrefs();
+
   // Add moto UID to headers
   request.headers['moto'] = moto;
 
@@ -48,7 +46,7 @@ print(url);
     // Attempt to update foreground service
   if (await ForegroundService
       .isBackgroundIsolateSetupComplete()) {
-    await ForegroundService.sendToPort(filesize(settings.bytesUploaded));
+    await ForegroundService.sendToPort(filesize(SL.getIt<Settings>().bytesUploaded));
     FLog.info(className: "moto",
         methodName: "Upload File", text: "Updated foreground service");
   } else {
