@@ -29,7 +29,7 @@ class Moto extends ChangeNotifier {
     this.rego,
   });
 
-  double x, y, z, xGyro, yGyro, zGyro, heading, latitude= 0, longitude = 0;
+  double x, y, z, xV, yV, zV, heading, latitude = 0, longitude = 0;
   String uid;
   String name;
   String rego;
@@ -42,11 +42,9 @@ class Moto extends ChangeNotifier {
   StreamSubscription<Position> gpsStream;
   StreamSubscription<AccelerometerEvent> accelStream;
   StreamSubscription<UserAccelerometerEvent> userAccelStream;
-  StreamSubscription<GyroscopeEvent> gyroStream;
   StreamSubscription<MagnetometerEvent> magnetStream;
 
   Vector3 _accelerometer = Vector3.zero();
-  Vector3 _gyroscope = Vector3.zero();
   Vector3 _magnetometer = Vector3.zero();
   Vector3 _userAccelerometer = Vector3.zero();
 
@@ -74,15 +72,30 @@ class Moto extends ChangeNotifier {
   void sensorSubscribe() async {
     // Throttle stream using "audit" so we only get one event every 25ms
     accelStream = motionSensors.accelerometer
-        .audit(const Duration(milliseconds: 25))
         .listen((AccelerometerEvent event) {
       if (SL.getIt<Settings>().recordAcceleration) {
+
+        // Update x,y,z state variables (for display)
+        _accelerometer.setValues(event.x, event.y, event.z);
+        x = event.x;
+        y = event.y;
+        z = event.z;
+
+        var matrix =
+        motionSensors.getRotationMatrix(_accelerometer, _magnetometer);
+
+        matrix.transform3(_userAccelerometer);
+
+        xV = _userAccelerometer.x;
+        yV = _userAccelerometer.y;
+        zV = _userAccelerometer.z;
+
         // Create an accelerometer object from event data
         Accel ac = Accel(
             time: DateTime.now(),
-            x: event.x,
-            y: event.y,
-            z: event.z,
+            x: xV,
+            y: xV,
+            z: xV,
             moto: uid);
 
         // Push the accel object into the queue if speed greater than 15kmhr
@@ -93,12 +106,6 @@ class Moto extends ChangeNotifier {
           {
             isRecordingAccel = false;
           }
-
-        // Update x,y,z state variables (for display)
-        _accelerometer.setValues(event.x, event.y, event.z);
-        x = event.x;
-        y = event.y;
-        z = event.z;
 
         notifyListeners();
       }
@@ -111,20 +118,6 @@ class Moto extends ChangeNotifier {
       }
     });
 
-    gyroStream = motionSensors.gyroscope.listen((GyroscopeEvent event) {
-      if (SL.getIt<Settings>().recordAcceleration) {
-        _gyroscope.setValues(event.x, event.y, event.z);
-
-        var matrix =
-            motionSensors.getRotationMatrix(_accelerometer, _magnetometer);
-
-        matrix.transform3(_userAccelerometer);
-
-        xGyro = _userAccelerometer.x;
-        yGyro = _userAccelerometer.y;
-        zGyro = _userAccelerometer.z;
-      }
-    });
 
     magnetStream = motionSensors.magnetometer.listen((MagnetometerEvent event) {
       if (SL.getIt<Settings>().recordAcceleration) {
@@ -135,16 +128,15 @@ class Moto extends ChangeNotifier {
 
 // Subscribe to the GPS location stream, request update every second
     gpsStream = Geolocator.getPositionStream(
-        desiredAccuracy: LocationAccuracy.bestForNavigation,
+            desiredAccuracy: LocationAccuracy.bestForNavigation,
             intervalDuration: Duration(seconds: 1))
         .listen((Position position) {
       if (SL.getIt<Settings>().recordLocation) {
-
-
-        final double distance = Geolocator.distanceBetween( latitude, longitude, position.latitude, position.longitude);
+        final double distance = Geolocator.distanceBetween(
+            latitude, longitude, position.latitude, position.longitude);
 
         // only update location if we have travelled more than 10 metres
-        if(distance >= SL.getIt<Settings>().distanceFilter) {
+        if (distance >= SL.getIt<Settings>().distanceFilter) {
           latitude = position.latitude;
           longitude = position.longitude;
 
@@ -160,11 +152,11 @@ class Moto extends ChangeNotifier {
               heading: position.heading,
               time: DateTime.now());
 
-            // Add to processing queue
-            gpsQueue.add(p);
+          // Add to processing queue
+          gpsQueue.add(p);
 
           // Add marker to map if distance > distanec filter
-          if (speed > SL.getIt<Settings>().accelMinSpeed ) {
+          if (speed > SL.getIt<Settings>().accelMinSpeed) {
             var cm = CircleMarker(
                 radius: 5,
                 color: Colors.blue,
@@ -177,12 +169,15 @@ class Moto extends ChangeNotifier {
                 point: LatLng(p.latitude, p.longitude));
             markers.add(cm);
           }
-
         }
 
         speed = (position.speed * 3.6).toInt();
         location = LatLng(position.latitude, position.longitude);
         heading = position.heading;
+
+        motionSensors.accelerometerUpdateInterval = Duration.microsecondsPerSecond ~/ 60;
+        motionSensors.userAccelerometerUpdateInterval = Duration.microsecondsPerSecond ~/ 60;
+        motionSensors.magnetometerUpdateInterval = Duration.microsecondsPerSecond ~/ 60;
 
         notifyListeners();
       }
@@ -191,11 +186,10 @@ class Moto extends ChangeNotifier {
 
   // Dispose of sensor streams
   void sensorUnSubscribe() {
-    gpsStream.cancel();
-    accelStream.cancel();
-    userAccelStream.cancel();
-    gyroStream.cancel();
-    magnetStream.cancel();
+    if (gpsStream != null) gpsStream.cancel();
+    if (accelStream != null) accelStream.cancel();
+    if (userAccelStream != null) userAccelStream.cancel();
+    if (magnetStream != null) magnetStream.cancel();
   }
 
   // Return a list of object from a Q for processing
@@ -273,13 +267,12 @@ class Moto extends ChangeNotifier {
             '${SL.getIt<Settings>().cacheDir.path}/${randomNumber.toString()}.zip');
 
         // Try to create zip file
-          await ZipFile.createFromFiles(
-              sourceDir: SL.getIt<Settings>().cacheDir,
-              files: [
-                payloadFile,
-              ],
-              zipFile: zipFile);
-
+        await ZipFile.createFromFiles(
+            sourceDir: SL.getIt<Settings>().cacheDir,
+            files: [
+              payloadFile,
+            ],
+            zipFile: zipFile);
 
         // Move file to upload directory
         await zipFile.rename(
