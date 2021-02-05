@@ -64,9 +64,9 @@ class _HomeState extends State<Home> {
           Text(SL.getIt<Moto>().longitude.toString(), textScaleFactor: 1)),
       _TextTile(Text("Accelerometer",
           textScaleFactor: 1.5, style: TextStyle(fontWeight: FontWeight.bold))),
-      _getRangePointerGauge(SL.getIt<Moto>().xGyro, Colors.green),
-      _getRangePointerGauge(SL.getIt<Moto>().yGyro, Colors.red),
-      _getRangePointerGauge(SL.getIt<Moto>().zGyro, Colors.blue),
+      _getRangePointerGauge(SL.getIt<Moto>().xV, Colors.green),
+      _getRangePointerGauge(SL.getIt<Moto>().yV, Colors.red),
+      _getRangePointerGauge(SL.getIt<Moto>().zV, Colors.blue),
       _accelerometerStatusTile(),
     ];
 
@@ -84,7 +84,12 @@ class _HomeState extends State<Home> {
                   icon: SL.getIt<Settings>().isForegroundService
                       ? Icon(Icons.play_arrow)
                       : Icon(Icons.stop),
-                  onPressed: SL.toggleForegroundServiceOnOff,
+                  onPressed: () {
+                    setState(() {
+                      SL.toggleForegroundServiceOnOff();
+                    });
+
+                  },
                   style: ElevatedButton.styleFrom(
                     primary: SL.getIt<Settings>().isForegroundService
                         ? Colors.lightGreen
