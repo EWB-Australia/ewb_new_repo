@@ -1,4 +1,4 @@
-package com.example.ewb_app
+package com.ewb.moto_monitor
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,5 +1,5 @@
 import 'package:device_info/device_info.dart';
-import 'package:ewb_app/screens/dashboard.dart';
+import 'package:moto_monitor/screens/dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:uuid/uuid.dart';

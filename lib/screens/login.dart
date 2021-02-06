@@ -6,7 +6,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:ewb_app/screens/QRscan.dart';
+import 'package:moto_monitor/screens/QRscan.dart';
 import 'package:http/http.dart' as http;
 import '../models/settings.dart';
 import '../screens/dashboard.dart';
@@ -15,7 +15,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:async/async.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:ewb_app/utils/service_locator.dart' as SL;
+import 'package:moto_monitor/utils/service_locator.dart' as SL;
 
 final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
 SharedPreferences prefs;
@@ -50,7 +50,7 @@ class _EWBloginState extends State<EWBlogin> {
           child: Container(
             padding: EdgeInsets.all(40.0),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Expanded(
                   child: Image(
@@ -63,6 +63,17 @@ class _EWBloginState extends State<EWBlogin> {
                   ),
                   subtitle: Text(
                     '\nThis application requires an authorisation code to operate. Please scan the QR provided by your EWB coordinator to configure the application.\n\nFor support or queries please contact xxx@ewb.com.au',
+                    style: Theme.of(context).textTheme.bodyText1,
+                  ),
+                ),
+                Icon(Icons.location_on_outlined),
+                ListTile(
+                  title: Text(
+                    'Background location access',
+                    style: Theme.of(context).textTheme.headline1,
+                  ),
+                  subtitle: Text(
+                    '\nThis app accesses your location in the background in order to track the location of your Moto and display it on the EWB Dashboard.',
                     style: Theme.of(context).textTheme.bodyText1,
                   ),
                 ),

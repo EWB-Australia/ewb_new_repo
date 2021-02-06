@@ -1,19 +1,19 @@
 import 'dart:collection';
-import 'package:ewb_app/models/settings.dart';
+import 'package:moto_monitor/models/settings.dart';
 import 'package:flutter/material.dart';
-import 'package:ewb_app/utils/zip.dart';
+import 'package:moto_monitor/utils/zip.dart';
 import 'package:f_logs/model/flog/flog.dart';
 import 'package:flutter_archive/flutter_archive.dart';
 import 'package:meta/meta.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
 import 'dart:convert';
-import 'package:ewb_app/models/accel.dart';
+import 'package:moto_monitor/models/accel.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:motion_sensors/motion_sensors.dart';
 import 'dart:async';
 import 'dart:math';
-import 'package:ewb_app/models/point.dart';
+import 'package:moto_monitor/models/point.dart';
 import 'package:stream_transform/stream_transform.dart';
 import 'dart:io';
 import '../utils/web.dart';
@@ -73,6 +73,7 @@ class Moto extends ChangeNotifier {
     // Throttle stream using "audit" so we only get one event every 25ms
     accelStream = motionSensors.accelerometer
         .listen((AccelerometerEvent event) {
+
       if (SL.getIt<Settings>().recordAcceleration) {
 
         // Update x,y,z state variables (for display)
@@ -90,16 +91,16 @@ class Moto extends ChangeNotifier {
         yV = _userAccelerometer.y;
         zV = _userAccelerometer.z;
 
-        // Create an accelerometer object from event data
-        Accel ac = Accel(
-            time: DateTime.now(),
-            x: xV,
-            y: xV,
-            z: xV,
-            moto: uid);
-
         // Push the accel object into the queue if speed greater than 15kmhr
         if (speed >= SL.getIt<Settings>().accelMinSpeed) {
+          // Create an accelerometer object from event data
+          Accel ac = Accel(
+              time: DateTime.now(),
+              x: xV,
+              y: xV,
+              z: xV,
+              moto: uid);
+
           accelQueue.add(ac);
           isRecordingAccel = true;
         } else
@@ -109,6 +110,7 @@ class Moto extends ChangeNotifier {
 
         notifyListeners();
       }
+
     });
 
     userAccelStream =
@@ -118,7 +120,6 @@ class Moto extends ChangeNotifier {
       }
     });
 
-
     magnetStream = motionSensors.magnetometer.listen((MagnetometerEvent event) {
       if (SL.getIt<Settings>().recordAcceleration) {
         // Update x,y,z state variables (for display)
@@ -126,10 +127,66 @@ class Moto extends ChangeNotifier {
       }
     });
 
+    motionSensors.accelerometerUpdateInterval = Duration.microsecondsPerSecond ~/ 60;
+    motionSensors.userAccelerometerUpdateInterval = Duration.microsecondsPerSecond ~/ 60;
+    motionSensors.magnetometerUpdateInterval = Duration.microsecondsPerSecond ~/ 60;
+
+  }
+
+  // Setup sensor subscription for only the accelerometer
+  // This is for basic phone suchas the Alcatel 1 B
+
+  void sensorSubscribeAccelOnly() async {
+
+    // Throttle stream using "audit" so we only get one event every 25ms
+    accelStream = motionSensors.accelerometer
+        .listen((AccelerometerEvent event) {
+
+      if (SL.getIt<Settings>().recordAcceleration) {
+
+        // Update x,y,z state variables (for display)
+        _accelerometer.setValues(event.x, event.y, event.z);
+        x = event.x;
+        y = event.y;
+        z = event.z;
+
+        //Vector3 _userAccelerometer = _accelerometer.cross(SL.getIt<Settings>().gravityVector).normalized();
+
+        // Subtract gravity vector from accelerometer readings
+        xV = x - SL.getIt<Settings>().gravityVector.x;
+        yV = y - SL.getIt<Settings>().gravityVector.y;
+        zV = z - SL.getIt<Settings>().gravityVector.z;
+
+        // Push the accel object into the queue if speed greater than 15kmhr
+        if (speed >= SL.getIt<Settings>().accelMinSpeed) {
+          // Create an accelerometer object from event data
+          Accel ac = Accel(
+              time: DateTime.now(),
+              x: xV,
+              y: xV,
+              z: xV,
+              moto: uid);
+
+          accelQueue.add(ac);
+          isRecordingAccel = true;
+        } else
+        {
+          isRecordingAccel = false;
+        }
+
+        notifyListeners();
+      }
+    });
+
+    motionSensors.accelerometerUpdateInterval = Duration.microsecondsPerSecond ~/ SL.getIt<Settings>().accelSamplesPerSecond;
+  }
+
+  void gpsSubscribe() async {
+
 // Subscribe to the GPS location stream, request update every second
     gpsStream = Geolocator.getPositionStream(
-            desiredAccuracy: LocationAccuracy.bestForNavigation,
-            intervalDuration: Duration(seconds: 1))
+        desiredAccuracy: LocationAccuracy.bestForNavigation,
+        intervalDuration: Duration(seconds: 1))
         .listen((Position position) {
       if (SL.getIt<Settings>().recordLocation) {
         final double distance = Geolocator.distanceBetween(
@@ -175,10 +232,6 @@ class Moto extends ChangeNotifier {
         location = LatLng(position.latitude, position.longitude);
         heading = position.heading;
 
-        motionSensors.accelerometerUpdateInterval = Duration.microsecondsPerSecond ~/ 60;
-        motionSensors.userAccelerometerUpdateInterval = Duration.microsecondsPerSecond ~/ 60;
-        motionSensors.magnetometerUpdateInterval = Duration.microsecondsPerSecond ~/ 60;
-
         notifyListeners();
       }
     });
@@ -223,7 +276,6 @@ class Moto extends ChangeNotifier {
     if (accelQueue.length > 0 || gpsQueue.length > 0) {
       Directory uploadDir =
           Directory('${SL.getIt<Settings>().cacheDir.path}/upload');
-      print(uploadDir.path);
 
       List<dynamic> gList = new List<dynamic>();
       List<dynamic> aList = new List<dynamic>();

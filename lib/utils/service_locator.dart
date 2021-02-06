@@ -1,6 +1,6 @@
 import 'package:device_info/device_info.dart';
-import 'package:ewb_app/models/moto.dart';
-import 'package:ewb_app/models/settings.dart';
+import 'package:moto_monitor/models/moto.dart';
+import 'package:moto_monitor/models/settings.dart';
 import 'package:get_it/get_it.dart';
 import 'package:f_logs/f_logs.dart';
 import 'package:shared_preferences/shared_preferences.dart';

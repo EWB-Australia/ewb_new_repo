@@ -1,5 +1,5 @@
-import 'package:ewb_app/models/moto.dart';
-import 'package:ewb_app/models/settings.dart';
+import 'package:moto_monitor/models/moto.dart';
+import 'package:moto_monitor/models/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:async';
@@ -12,6 +12,7 @@ import 'dashboard/map.dart';
 import 'dashboard/debug.dart';
 import 'dashboard/SettingsPage.dart';
 import 'package:bottom_navy_bar/bottom_navy_bar.dart';
+import 'package:motion_sensors/motion_sensors.dart';
 import 'package:foreground_service/foreground_service.dart';
 import 'package:filesize/filesize.dart';
 import '../utils/service_locator.dart' as SL;
@@ -55,6 +56,29 @@ class _DashboardState extends State<Dashboard> {
 
     await createFolderInCache("stagging");
     await createFolderInCache("upload");
+    await createFolderInCache("uploaded");
+
+    // Set up gps
+    SL.getIt<Moto>().gpsSubscribe();
+
+    // Configure sensors
+    // Check if magnet sensor and linear acceleration are available, if not use only phone raw acceleration
+    if (await motionSensors.isMagnetometerAvailable() && await motionSensors.isUserAccelerationAvailable() && await motionSensors.isAccelerometerAvailable()) {
+      SL.getIt<Moto>().sensorSubscribe();
+      // Save result in settings
+      SL.getIt<Settings>().sensorAccelOnly = false;
+      FLog.info(text: "Setting up with all sensors");
+    }
+    else if (await motionSensors.isMagnetometerAvailable() == false) {
+      SL.getIt<Moto>().sensorSubscribeAccelOnly();
+      // Save result in settings
+      SL.getIt<Settings>().sensorAccelOnly = true;
+      FLog.info(text: "Setting up with only accelerometer");
+    }
+    else {
+      // No sensor found, raise error
+      FLog.error(text: "No sensors found");
+    }
 
     // If the widget was removed from the tree while the asynchronous platform
     // message was in flight, we want to discard the reply rather than calling
@@ -72,10 +96,9 @@ class _DashboardState extends State<Dashboard> {
     _pageController = PageController();
 
     SL.getIt<Moto>().addListener(update);
+    SL.getIt<Settings>().addListener(update);
     // Setup directories
     SL.getIt<Settings>().setDirectories();
-    // Configure sensors
-    SL.getIt<Moto>().sensorSubscribe();
 
     // Setup periodic call to process/upload data
     Timer.periodic(Duration(minutes: 5), (Timer t) {

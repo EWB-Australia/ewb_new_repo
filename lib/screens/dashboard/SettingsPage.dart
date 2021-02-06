@@ -1,10 +1,10 @@
-import 'package:ewb_app/models/moto.dart';
-import 'package:ewb_app/models/settings.dart';
+import 'package:moto_monitor/models/moto.dart';
+import 'package:moto_monitor/models/settings.dart';
 import 'package:filesize/filesize.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
-import 'package:ewb_app/utils/service_locator.dart' as SL;
+import 'package:moto_monitor/utils/service_locator.dart' as SL;
 
 final f = new DateFormat('yyyy-MM-dd HH:mm');
 
@@ -126,6 +126,17 @@ class _SettingsPageState extends State<SettingsPage>
               endIndent: 0,
             ),
             ListTile(
+              leading: Icon(Icons.architecture),
+              title: Text('Record/calibrate inclination of phone'),
+              trailing: RaisedButton(
+                color: Colors.yellow,
+                child: Text("Calibrate"),
+                onPressed: () {
+                  SL.getIt<Settings>().bytesUploaded = 0;
+                  SL.getIt<Settings>().saveToPrefs();
+                },
+              ),
+            ),ListTile(
               leading: Icon(Icons.vpn_key_outlined),
               title: Text('Clear auth/settings (force QR rescan)'),
               trailing: RaisedButton(

@@ -1,8 +1,8 @@
-import 'package:ewb_app/models/settings.dart';
+import 'package:moto_monitor/models/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:f_logs/f_logs.dart';
 import 'package:intl/intl.dart';
-import 'package:ewb_app/utils/service_locator.dart' as SL;
+import 'package:moto_monitor/utils/service_locator.dart' as SL;
 
 
 final f = new DateFormat('yyyy-MM-dd HH:mm');

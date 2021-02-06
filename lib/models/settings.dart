@@ -4,6 +4,7 @@ import 'package:meta/meta.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vector_math/vector_math_64.dart' hide Colors;
 
 class Settings extends ChangeNotifier {
   Settings({
@@ -21,7 +22,8 @@ class Settings extends ChangeNotifier {
   this.dataProcessFrequency = Duration.secondsPerMinute*5,
   this.exportLogsDelay = Duration.secondsPerHour,
   this.accelMinSpeed = 15,
-    this.distanceFilter = 10.0
+  this.distanceFilter = 10.0,
+  this.accelSamplesPerSecond = 30
   });
 
   String moto_uid;
@@ -29,19 +31,22 @@ class Settings extends ChangeNotifier {
   String databaseURL = "https://kk9t74j5th.execute-api.ap-southeast-1.amazonaws.com/dev";
   int bytesUploaded = 0;
   bool isOnline = false;
-  bool isForegroundService = false;
+  bool isForegroundService = true;
   bool showDebugLog = false;
   bool showMap = false;
   bool recordLocation = true;
   bool recordAcceleration = true;
   bool recordBattery = true;
+  bool sensorAccelOnly = false;
   int dataProcessFrequency = Duration(minutes: 5).inSeconds;
   int exportLogsDelay = Duration(hours: 1).inSeconds;
   int accelMinSpeed = 15;
   double distanceFilter = 10.0;
+  int accelSamplesPerSecond = 60;
   SharedPreferences prefs;
   Directory tmpDir;
   Directory cacheDir;
+  Vector3 gravityVector = Vector3(0, 0, 9.81);
 
   factory Settings.fromRawJson(String str) => Settings.fromJson(json.decode(str));
 
@@ -63,7 +68,8 @@ class Settings extends ChangeNotifier {
         dataProcessFrequency: json["dataProcessFrequency"],
         exportLogsDelay: json["exportLogsDelay"],
         accelMinSpeed: json["accelMinSpeed"],
-        distanceFilter: json["distanceFilter"]
+        distanceFilter: json["distanceFilter"],
+        accelSamplesPerSecond: json["distanceFilter"]
       );
 
   Map<String, dynamic> toJson() =>
@@ -82,7 +88,8 @@ class Settings extends ChangeNotifier {
         "dataProcessFrequency": dataProcessFrequency,
         "exportLogsDelay": exportLogsDelay,
         "accelMinSpeed": accelMinSpeed,
-        "distanceFilter": distanceFilter
+        "distanceFilter": distanceFilter,
+        "accelSamplesPerSecond": accelSamplesPerSecond
       };
 
   void setOnline() async {

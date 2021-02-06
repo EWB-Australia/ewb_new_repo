@@ -2,10 +2,10 @@ library file_io;
 import 'dart:io';
 import 'dart:async';
 import 'dart:math';
-import 'package:ewb_app/models/settings.dart';
+import 'package:moto_monitor/models/settings.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:ewb_app/utils/service_locator.dart' as SL;
+import 'package:moto_monitor/utils/service_locator.dart' as SL;
 
 final uuid = Uuid();
 

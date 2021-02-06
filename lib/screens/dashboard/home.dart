@@ -1,5 +1,5 @@
-import 'package:ewb_app/models/moto.dart';
-import 'package:ewb_app/models/settings.dart';
+import 'package:moto_monitor/models/moto.dart';
+import 'package:moto_monitor/models/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
 import 'package:connectivity_widget/connectivity_widget.dart';
