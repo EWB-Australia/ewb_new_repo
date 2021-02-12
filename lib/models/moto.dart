@@ -21,6 +21,7 @@ import 'package:battery/battery.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong/latlong.dart';
 import '../utils/service_locator.dart' as SL;
+import 'package:connectivity_widget/connectivity_widget.dart';
 
 class Moto extends ChangeNotifier {
   Moto({
@@ -308,7 +309,7 @@ class Moto extends ChangeNotifier {
         'acceleration_values': aList
       };
       // Write the file.
-      payloadFile.writeAsString(json.encode(payload));
+      payloadFile.writeAsStringSync(json.encode(payload));
 
       files.add(payloadFile);
 
@@ -334,7 +335,8 @@ class Moto extends ChangeNotifier {
         uploadDir.list(recursive: false, followLinks: false).listen((e) async {
           // TODO UPLOAD ALL FILES IN DIRECTORY INCLUDING LOGS
           // Only upload if we have internet connection
-          if (SL.getIt<Settings>().isOnline) {
+          var isOnlineNow = await ConnectivityUtils.instance.isPhoneConnected();
+          if (isOnlineNow) {
             await upload_delete(SL.getIt<Settings>().databaseURL, e.path);
           }
         });
