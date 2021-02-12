@@ -69,7 +69,7 @@ class Settings extends ChangeNotifier {
         exportLogsDelay: json["exportLogsDelay"],
         accelMinSpeed: json["accelMinSpeed"],
         distanceFilter: json["distanceFilter"],
-        accelSamplesPerSecond: json["distanceFilter"]
+        accelSamplesPerSecond: json["accelSamplesPerSecond"]
       );
 
   Map<String, dynamic> toJson() =>
@@ -122,7 +122,8 @@ class Settings extends ChangeNotifier {
 
     prefs = await SharedPreferences.getInstance();
 
-    prefs.setString('settings', this.toRawJson());
+
+    await prefs.setString('settings', this.toRawJson());
 
   }
 
