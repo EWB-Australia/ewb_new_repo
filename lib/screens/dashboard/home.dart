@@ -79,21 +79,20 @@ class _HomeState extends State<Home> {
                 padding: EdgeInsets.all(15),
                 child: ElevatedButton.icon(
                   label: SL.getIt<Settings>().isForegroundService
-                      ? Text("Record")
-                      : Text("Stop"),
+                      ? Text("Stop")
+                      : Text("Record"),
                   icon: SL.getIt<Settings>().isForegroundService
-                      ? Icon(Icons.play_arrow)
-                      : Icon(Icons.stop),
+                      ? Icon(Icons.stop)
+                      : Icon(Icons.play_arrow),
                   onPressed: () {
                     setState(() {
                       SL.toggleForegroundServiceOnOff();
                     });
-
                   },
                   style: ElevatedButton.styleFrom(
                     primary: SL.getIt<Settings>().isForegroundService
-                        ? Colors.lightGreen
-                        : Colors.redAccent,
+                        ? Colors.redAccent
+                        : Colors.lightGreen,
                   ),
                 )),
           ],

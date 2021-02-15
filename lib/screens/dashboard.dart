@@ -12,10 +12,9 @@ import 'dashboard/map.dart';
 import 'dashboard/debug.dart';
 import 'dashboard/SettingsPage.dart';
 import 'package:bottom_navy_bar/bottom_navy_bar.dart';
-import 'package:motion_sensors/motion_sensors.dart';
 import 'package:foreground_service/foreground_service.dart';
-import 'package:filesize/filesize.dart';
 import '../utils/service_locator.dart' as SL;
+
 
 SharedPreferences prefs;
 
@@ -54,30 +53,27 @@ class _DashboardState extends State<Dashboard> {
       SL.getIt<Settings>().setOffline();
     }
 
-    await createFolderInCache("stagging");
-    await createFolderInCache("upload");
-    await createFolderInCache("uploaded");
+    // Setup directories
+    await SL.getIt<Settings>().setDirectories();
+    await createFolder('${SL.getIt<Settings>().cacheDir.path }/upload/');
+    await createFolder('${SL.getIt<Settings>().cacheDir.path }/uploaded/');
 
     // Set up gps
     SL.getIt<Moto>().gpsSubscribe();
 
-    // Configure sensors
-    // Check if magnet sensor and linear acceleration are available, if not use only phone raw acceleration
-    if (await motionSensors.isMagnetometerAvailable() && await motionSensors.isUserAccelerationAvailable() && await motionSensors.isAccelerometerAvailable()) {
-      SL.getIt<Moto>().sensorSubscribe();
-      // Save result in settings
-      SL.getIt<Settings>().sensorAccelOnly = false;
-      FLog.info(text: "Setting up with all sensors");
-    }
-    else if (await motionSensors.isMagnetometerAvailable() == false) {
+    // Setup sensors
+    if (SL.getIt<Settings>().sensorAccelOnly = true){
       SL.getIt<Moto>().sensorSubscribeAccelOnly();
-      // Save result in settings
-      SL.getIt<Settings>().sensorAccelOnly = true;
-      FLog.info(text: "Setting up with only accelerometer");
+    } else {
+      SL.getIt<Moto>().sensorSubscribe();
     }
-    else {
-      // No sensor found, raise error
-      FLog.error(text: "No sensors found");
+
+    if (await ForegroundService
+        .isBackgroundIsolateSetupComplete()) {
+      await ForegroundService.sendToPort("OK");
+      FLog.info(text: "Foreground service comms setup");
+    } else {
+      FLog.error(text: "Problem setting up foreground service comms");
     }
 
     // If the widget was removed from the tree while the asynchronous platform
@@ -91,18 +87,23 @@ class _DashboardState extends State<Dashboard> {
   void initState() {
     super.initState();
     SL.maybeStartFGS();
-    initPlatformState();
+    SL.getIt<Settings>().isForegroundService = true;
 
     _pageController = PageController();
 
     SL.getIt<Moto>().addListener(update);
     SL.getIt<Settings>().addListener(update);
-    // Setup directories
-    SL.getIt<Settings>().setDirectories();
+
+    initPlatformState();
 
     // Setup periodic call to process/upload data
-    Timer.periodic(Duration(minutes: 5), (Timer t) {
+    SL.getIt<Settings>().dataProcessTimer = Timer.periodic(Duration(seconds: SL.getIt<Settings>().dataProcessFrequency), (Timer t1) {
       SL.getIt<Moto>().processDataQueues();
+    });
+
+    // Setup periodic call to process/upload data
+    SL.getIt<Settings>().pingServerTimer = Timer.periodic(Duration(minutes: 60), (Timer t2) {
+      SL.getIt<Moto>().pingServer();
     });
   }
 

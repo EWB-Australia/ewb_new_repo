@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:meta/meta.dart';
@@ -47,6 +48,11 @@ class Settings extends ChangeNotifier {
   Directory tmpDir;
   Directory cacheDir;
   Vector3 gravityVector = Vector3(0, 0, 9.81);
+
+  bool sleepMode = false;
+
+  Timer dataProcessTimer;
+  Timer pingServerTimer;
 
   factory Settings.fromRawJson(String str) => Settings.fromJson(json.decode(str));
 

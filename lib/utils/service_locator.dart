@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:device_info/device_info.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:moto_monitor/models/moto.dart';
 import 'package:moto_monitor/models/settings.dart';
 import 'package:get_it/get_it.dart';
@@ -10,7 +13,6 @@ import 'package:foreground_service/foreground_service.dart';
 final GetIt getIt = GetIt.instance;
 
 Future<void> setupConfig() async {
-
   SharedPreferences prefs;
   Settings settings;
   // obtain shared preferences
@@ -24,21 +26,33 @@ Future<void> setupConfig() async {
   // Check if previous settings exist
   if (prefs.getString("settings") == null) {
     // Settings don't exist, create object
-    FLog.info(className: "init", methodName: "service locator", text: "Settings doesn't exist in shared prefs");
+    FLog.info(
+        className: "init",
+        methodName: "service locator",
+        text: "Settings doesn't exist in shared prefs");
     getIt.registerSingleton<Settings>(Settings(moto_uid: uid));
   } else {
-    FLog.info(className: "init", methodName: "service locator", text: "Settings key exists, try to create object");
+    FLog.info(
+        className: "init",
+        methodName: "service locator",
+        text: "Settings key exists, try to create object");
     try {
       var s = Settings.fromRawJson(prefs.getString('settings'));
       getIt.registerSingleton<Settings>(s);
     } catch (err) {
-      FLog.info(className: "init", methodName: "service locator", text: "Failed to read settings json string");
+      FLog.info(
+          className: "init",
+          methodName: "service locator",
+          text: "Failed to read settings json string");
       getIt.registerSingleton<Settings>(Settings(moto_uid: uid));
     }
   }
 
   // Create moto object and register in state
-  FLog.info(className: "init", methodName: "service locator", text: "Vehicle ID ${androidInfo.androidId}");
+  FLog.info(
+      className: "init",
+      methodName: "service locator",
+      text: "Vehicle ID ${androidInfo.androidId}");
   getIt.registerSingleton<Moto>(Moto(uid: uid));
 
   await getIt.allReady();
@@ -54,14 +68,78 @@ void toggleForegroundServiceOnOff() async {
     await ForegroundService.stopForegroundService();
     appMessage = "Stopped foreground service.";
     getIt<Moto>().sensorUnSubscribe();
-    getIt<Settings>().isForegroundService = true;
+    // Pause data process timer
+    getIt<Settings>().dataProcessTimer.cancel();
+
+    getIt<Settings>().isForegroundService = false;
+
+    getIt<Settings>().sleepMode = false;
   } else {
     maybeStartFGS();
+    // Restart data process timer
+    // Setup periodic call to process/upload data
+    getIt<Settings>().dataProcessTimer = Timer.periodic(
+        Duration(minutes: getIt<Settings>().dataProcessFrequency), (Timer t) {
+      getIt<Moto>().processDataQueues();
+    });
+
     appMessage = "Started foreground service.";
-    getIt<Moto>().sensorSubscribe();
-    getIt<Settings>().isForegroundService = false;
+    if (getIt<Settings>().sensorAccelOnly = true) {
+      getIt<Moto>().sensorSubscribeAccelOnly();
+    } else {
+      getIt<Moto>().sensorSubscribe();
+    }
+
+    getIt<Settings>().isForegroundService = true;
+    getIt<Settings>().sleepMode = false;
   }
 }
+
+//toggleSleepModeOnOff
+void sleepModeOff() async {
+  String appMessage;
+
+  appMessage = "Waking from sleep mode";
+  FLog.info(
+      className: "sleepmode",
+      methodName: "toggle sleep",
+      text: "Waking from sleep mode");
+
+  // Restart data process timer
+  // Setup periodic call to process/upload data
+  getIt<Settings>().pingServerTimer.cancel();
+  getIt<Settings>().dataProcessTimer = Timer.periodic(
+      Duration(minutes: getIt<Settings>().dataProcessFrequency), (Timer t) {
+    getIt<Moto>().processDataQueues();
+  });
+
+  getIt<Moto>().sensorUnSubscribe();
+
+  getIt<Moto>().gpsSubscribe();
+
+  if (getIt<Settings>().sensorAccelOnly = true) {
+    getIt<Moto>().sensorSubscribeAccelOnly();
+  } else {
+    getIt<Moto>().sensorSubscribe();
+  }
+}
+void sleepModeOn() async {
+    FLog.info(
+        className: "sleepmode",
+        methodName: "toggle sleep",
+        text: "Entering sleep mode");
+
+    getIt<Moto>().sensorUnSubscribe();
+
+    // Pause data process timer
+    getIt<Settings>().dataProcessTimer.cancel();
+
+    getIt<Settings>().pingServerTimer =
+        Timer.periodic(Duration(minutes: 60), (Timer t) {
+      getIt<Moto>().pingServer();
+    });
+  }
+
 
 //use an async method so we can await
 void maybeStartFGS() async {
@@ -69,16 +147,14 @@ void maybeStartFGS() async {
   ///but if the foreground service stayed alive,
   ///this does not need to be re-done
   if (!(await ForegroundService.foregroundServiceIsStarted())) {
-    await ForegroundService.setServiceIntervalSeconds(5);
+    await ForegroundService.setServiceIntervalSeconds(60);
 
     //necessity of editMode is dubious (see function comments)
     await ForegroundService.notification.startEditMode();
 
-    await ForegroundService.notification
-        .setTitle("EWB Moto app recording");
+    await ForegroundService.notification.setTitle("EWB Moto app recording");
 
-    await ForegroundService.notification
-        .setText("Data uploaded: ---");
+    await ForegroundService.notification.setText("Data uploaded: ---");
 
     await ForegroundService.notification.finishEditMode();
 
@@ -97,7 +173,6 @@ void foregroundServiceFunction() {
   //ForegroundService.notification.setText("Data uploaded: 0");
 
   if (!ForegroundService.isIsolateCommunicationSetup) {
-
     ForegroundService.setupIsolateCommunication((data) {
       ForegroundService.notification.setText("Data uploaded: $data");
     });

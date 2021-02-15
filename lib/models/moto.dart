@@ -182,12 +182,13 @@ class Moto extends ChangeNotifier {
     motionSensors.accelerometerUpdateInterval = Duration.microsecondsPerSecond ~/ SL.getIt<Settings>().accelSamplesPerSecond;
   }
 
-  void gpsSubscribe() async {
+
+  void gpsSubscribe({int intervalSeconds = 1}) async {
 
 // Subscribe to the GPS location stream, request update every second
     gpsStream = Geolocator.getPositionStream(
         desiredAccuracy: LocationAccuracy.bestForNavigation,
-        intervalDuration: Duration(seconds: 1))
+        intervalDuration: Duration(seconds: intervalSeconds))
         .listen((Position position) {
       if (SL.getIt<Settings>().recordLocation) {
         final double distance = Geolocator.distanceBetween(
@@ -273,8 +274,65 @@ class Moto extends ChangeNotifier {
     }
   }
 
+  Future<void> pingServer() async {
+
+    Directory uploadDir =
+    Directory('${SL.getIt<Settings>().cacheDir.path}/upload');
+
+    Random random = new Random();
+    int randomNumber = random.nextInt(9000) + 1000;
+
+    List<File> files = [];
+
+
+    final File payloadFile =
+    await File('${SL.getIt<Settings>().cacheDir.path}/payload.json')
+        .create(recursive: true);
+
+    // Pacakge all the data we need to send into a json file
+    final payload = {
+      'moto': uid,
+      'trip': uid,
+      'time': DateTime.now().toIso8601String(),
+      'batteryLevel': await getBattery() ?? '',
+    };
+    // Write the file.
+    payloadFile.writeAsStringSync(json.encode(payload));
+
+    files.add(payloadFile);
+
+    if (files.length > 0) {
+      print("compressing");
+
+      final zipFile = createZipFile(
+          '${SL.getIt<Settings>().cacheDir.path}/${randomNumber.toString()}.zip');
+
+      // Try to create zip file
+      await ZipFile.createFromFiles(
+          sourceDir: SL.getIt<Settings>().cacheDir,
+          files: [
+            payloadFile,
+          ],
+          zipFile: zipFile);
+
+      // Move file to upload directory
+      await zipFile.rename(
+          '${SL.getIt<Settings>().cacheDir.path}/upload/${randomNumber.toString()}.zip');
+
+      // Don't follow links and dont scan sub-folders
+      uploadDir.list(recursive: false, followLinks: false).listen((e) async {
+        // TODO UPLOAD ALL FILES IN DIRECTORY INCLUDING LOGS
+        // Only upload if we have internet connection
+        var isOnlineNow = await ConnectivityUtils.instance.isPhoneConnected();
+        if (isOnlineNow) {
+          await upload_delete(SL.getIt<Settings>().databaseURL, e.path);
+        }
+      });
+    }
+}
+
   Future<void> processDataQueues() async {
-    if (accelQueue.length > 0 || gpsQueue.length > 0) {
+     if (accelQueue.length > 0 || gpsQueue.length > 0) {
       Directory uploadDir =
           Directory('${SL.getIt<Settings>().cacheDir.path}/upload');
 

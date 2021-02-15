@@ -5,8 +5,6 @@ import 'dart:math';
 import 'package:moto_monitor/models/settings.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:moto_monitor/utils/service_locator.dart' as SL;
-
 final uuid = Uuid();
 
 //Helper Helper function that I got from the internet: https://stackoverflow.com/questions/61919395/how-to-generate-random-string-in-dart
@@ -21,11 +19,9 @@ String generateFilename() {
   return getRandomString(6);
 }
 
-Future<Directory> createFolderInCache(String folderName) async {
-//Get this App Document Directory
-  final Directory _appCacheDir = SL.getIt<Settings>().cacheDir;
+Future<Directory> createFolder(String folderName) async {
   final Directory _appCacheDirFolder =
-      Directory('${_appCacheDir.path}/$folderName/');
+      Directory(folderName);
 
   print('Directory to create: $_appCacheDirFolder');
 

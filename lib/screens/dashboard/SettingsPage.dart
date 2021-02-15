@@ -118,6 +118,23 @@ class _SettingsPageState extends State<SettingsPage>
                 )
               ],
             ),
+            Row(
+              children: <Widget>[
+                Flexible(
+                  child: SwitchListTile(
+                    title: const Text('Sleep mode'),
+                    value: SL.getIt<Settings>().sleepMode,
+                    onChanged: (bool value) {
+                      setState(() {
+                        SL.getIt<Settings>().sleepMode = value;
+                        value ? SL.sleepModeOn():SL.sleepModeOff();
+                      });
+                    },
+                    secondary: const Icon(Icons.airline_seat_legroom_extra_outlined),
+                  ),
+                )
+              ],
+            ),
             const Divider(
               color: Colors.black,
               height: 20,

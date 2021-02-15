@@ -47,7 +47,7 @@ class _MapState extends State<Map> with AutomaticKeepAliveClientMixin<Map> {
             child: settings.showMap
                 ? FlutterMap(
                     options: MapOptions(
-                      center: moto.location ?? LatLng(51.5, -0.09),
+                      center: LatLng(moto.latitude, moto.longitude) ?? LatLng(51.5, -0.09),
                       zoom: 16.0,
                     ),
                     layers: [

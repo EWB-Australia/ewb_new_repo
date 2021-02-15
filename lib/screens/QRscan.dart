@@ -15,6 +15,7 @@ class _QRscanState extends State<QRscan> {
   Barcode result;
   QRViewController controller;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  final GlobalKey qrKey2 = GlobalKey(debugLabel: 'QR2');
 
   // In order to get hot reload to work we need to pause the camera
   @override
@@ -26,6 +27,7 @@ class _QRscanState extends State<QRscan> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: qrKey2,
       body: Column(
         children: <Widget>[
           Expanded(flex: 9, child: _buildQrView(context)),
@@ -72,7 +74,7 @@ class _QRscanState extends State<QRscan> {
     // we need to listen for Flutter SizeChanged notification and update controller
     return QRView(
       key: qrKey,
-      cameraFacing: CameraFacing.front,
+      cameraFacing: CameraFacing.back,
       onQRViewCreated: _onQRViewCreated,
       formatsAllowed: [BarcodeFormat.qrcode],
       overlay: QrScannerOverlayShape(

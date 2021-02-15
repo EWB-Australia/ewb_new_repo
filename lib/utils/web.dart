@@ -57,7 +57,6 @@ Future<int> upload_file(url, filePath) async {
   }
 
 Future<void> upload_delete(url, filePath) async {
-  //try {
     await upload_file(url, filePath).then((e) async {
       print("response ${e.toString()}");
       if (e == 200) {
@@ -70,10 +69,4 @@ Future<void> upload_delete(url, filePath) async {
             methodName: "uploadfile", text: "Error uploading file: ${basename(filePath)}}");
       }
     });
-  //} catch (err) {
-  //  FLog.error(className: "moto",
-  //      methodName: "uploadfile", text: "Error uploading file: ${basename(filePath)}}");
-  //  FLog.error(className: "moto",
-   //     methodName: "uploadfile", text: err);
-  //}
 }
