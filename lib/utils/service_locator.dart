@@ -58,6 +58,7 @@ Future<void> setupConfig() async {
   await getIt.allReady();
 
   getIt<Settings>().saveToPrefs();
+
 }
 
 void toggleForegroundServiceOnOff() async {
@@ -84,7 +85,7 @@ void toggleForegroundServiceOnOff() async {
     });
 
     appMessage = "Started foreground service.";
-    if (getIt<Settings>().sensorAccelOnly = true) {
+    if (getIt<Settings>().sensorAccelOnly == true) {
       getIt<Moto>().sensorSubscribeAccelOnly();
     } else {
       getIt<Moto>().sensorSubscribe();
@@ -107,7 +108,6 @@ void sleepModeOff() async {
 
   // Restart data process timer
   // Setup periodic call to process/upload data
-  getIt<Settings>().pingServerTimer.cancel();
   getIt<Settings>().dataProcessTimer = Timer.periodic(
       Duration(minutes: getIt<Settings>().dataProcessFrequency), (Timer t) {
     getIt<Moto>().processDataQueues();
@@ -117,7 +117,7 @@ void sleepModeOff() async {
 
   getIt<Moto>().gpsSubscribe();
 
-  if (getIt<Settings>().sensorAccelOnly = true) {
+  if (getIt<Settings>().sensorAccelOnly == true) {
     getIt<Moto>().sensorSubscribeAccelOnly();
   } else {
     getIt<Moto>().sensorSubscribe();
@@ -134,10 +134,6 @@ void sleepModeOn() async {
     // Pause data process timer
     getIt<Settings>().dataProcessTimer.cancel();
 
-    getIt<Settings>().pingServerTimer =
-        Timer.periodic(Duration(minutes: 60), (Timer t) {
-      getIt<Moto>().pingServer();
-    });
   }
 
 

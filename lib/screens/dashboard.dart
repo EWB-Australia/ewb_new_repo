@@ -14,7 +14,7 @@ import 'dashboard/SettingsPage.dart';
 import 'package:bottom_navy_bar/bottom_navy_bar.dart';
 import 'package:foreground_service/foreground_service.dart';
 import '../utils/service_locator.dart' as SL;
-
+import 'package:motion_sensors/motion_sensors.dart';
 
 SharedPreferences prefs;
 
@@ -61,8 +61,16 @@ class _DashboardState extends State<Dashboard> {
     // Set up gps
     SL.getIt<Moto>().gpsSubscribe();
 
+    // Check if phone has magnometer
+    if (await motionSensors.isAccelerometerAvailable() && await motionSensors.isUserAccelerationAvailable() && await motionSensors.isMagnetometerAvailable() ) {
+      SL.getIt<Settings>().sensorAccelOnly = false;
+    } else {
+      SL.getIt<Settings>().sensorAccelOnly = true;
+    }
+
+
     // Setup sensors
-    if (SL.getIt<Settings>().sensorAccelOnly = true){
+    if (SL.getIt<Settings>().sensorAccelOnly == true){
       SL.getIt<Moto>().sensorSubscribeAccelOnly();
     } else {
       SL.getIt<Moto>().sensorSubscribe();

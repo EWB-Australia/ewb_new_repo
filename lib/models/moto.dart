@@ -72,11 +72,9 @@ class Moto extends ChangeNotifier {
   // Set up sensor subscriptions
   void sensorSubscribe() async {
     // Throttle stream using "audit" so we only get one event every 25ms
-    accelStream = motionSensors.accelerometer
-        .listen((AccelerometerEvent event) {
-
+    accelStream =
+        motionSensors.accelerometer.listen((AccelerometerEvent event) {
       if (SL.getIt<Settings>().recordAcceleration) {
-
         // Update x,y,z state variables (for display)
         _accelerometer.setValues(event.x, event.y, event.z);
         x = event.x;
@@ -84,7 +82,7 @@ class Moto extends ChangeNotifier {
         z = event.z;
 
         var matrix =
-        motionSensors.getRotationMatrix(_accelerometer, _magnetometer);
+            motionSensors.getRotationMatrix(_accelerometer, _magnetometer);
 
         matrix.transform3(_userAccelerometer);
 
@@ -95,23 +93,17 @@ class Moto extends ChangeNotifier {
         // Push the accel object into the queue if speed greater than 15kmhr
         if (speed >= SL.getIt<Settings>().accelMinSpeed) {
           // Create an accelerometer object from event data
-          Accel ac = Accel(
-              time: DateTime.now(),
-              x: xV,
-              y: xV,
-              z: xV,
-              moto: uid);
+          Accel ac =
+              Accel(time: DateTime.now(), x: xV, y: xV, z: xV, moto: uid);
 
           accelQueue.add(ac);
           isRecordingAccel = true;
-        } else
-          {
-            isRecordingAccel = false;
-          }
+        } else {
+          isRecordingAccel = false;
+        }
 
         notifyListeners();
       }
-
     });
 
     userAccelStream =
@@ -128,23 +120,22 @@ class Moto extends ChangeNotifier {
       }
     });
 
-    motionSensors.accelerometerUpdateInterval = Duration.microsecondsPerSecond ~/ 60;
-    motionSensors.userAccelerometerUpdateInterval = Duration.microsecondsPerSecond ~/ 60;
-    motionSensors.magnetometerUpdateInterval = Duration.microsecondsPerSecond ~/ 60;
-
+    motionSensors.accelerometerUpdateInterval =
+        Duration.microsecondsPerSecond ~/ 60;
+    motionSensors.userAccelerometerUpdateInterval =
+        Duration.microsecondsPerSecond ~/ 60;
+    motionSensors.magnetometerUpdateInterval =
+        Duration.microsecondsPerSecond ~/ 60;
   }
 
   // Setup sensor subscription for only the accelerometer
-  // This is for basic phone suchas the Alcatel 1 B
+  // This is for basic phone such as the Alcatel 1 B
 
   void sensorSubscribeAccelOnly() async {
-
     // Throttle stream using "audit" so we only get one event every 25ms
-    accelStream = motionSensors.accelerometer
-        .listen((AccelerometerEvent event) {
-
+    accelStream =
+        motionSensors.accelerometer.listen((AccelerometerEvent event) {
       if (SL.getIt<Settings>().recordAcceleration) {
-
         // Update x,y,z state variables (for display)
         _accelerometer.setValues(event.x, event.y, event.z);
         x = event.x;
@@ -161,17 +152,12 @@ class Moto extends ChangeNotifier {
         // Push the accel object into the queue if speed greater than 15kmhr
         if (speed >= SL.getIt<Settings>().accelMinSpeed) {
           // Create an accelerometer object from event data
-          Accel ac = Accel(
-              time: DateTime.now(),
-              x: xV,
-              y: xV,
-              z: xV,
-              moto: uid);
+          Accel ac =
+              Accel(time: DateTime.now(), x: xV, y: xV, z: xV, moto: uid);
 
           accelQueue.add(ac);
           isRecordingAccel = true;
-        } else
-        {
+        } else {
           isRecordingAccel = false;
         }
 
@@ -179,16 +165,16 @@ class Moto extends ChangeNotifier {
       }
     });
 
-    motionSensors.accelerometerUpdateInterval = Duration.microsecondsPerSecond ~/ SL.getIt<Settings>().accelSamplesPerSecond;
+    motionSensors.accelerometerUpdateInterval =
+        Duration.microsecondsPerSecond ~/
+            SL.getIt<Settings>().accelSamplesPerSecond;
   }
 
-
   void gpsSubscribe({int intervalSeconds = 1}) async {
-
 // Subscribe to the GPS location stream, request update every second
     gpsStream = Geolocator.getPositionStream(
-        desiredAccuracy: LocationAccuracy.bestForNavigation,
-        intervalDuration: Duration(seconds: intervalSeconds))
+            desiredAccuracy: LocationAccuracy.bestForNavigation,
+            intervalDuration: Duration(seconds: intervalSeconds))
         .listen((Position position) {
       if (SL.getIt<Settings>().recordLocation) {
         final double distance = Geolocator.distanceBetween(
@@ -275,19 +261,22 @@ class Moto extends ChangeNotifier {
   }
 
   Future<void> pingServer() async {
+    FLog.info(
+        className: "pingServer",
+        methodName: "Ping",
+        text: "Starting ping server");
 
     Directory uploadDir =
-    Directory('${SL.getIt<Settings>().cacheDir.path}/upload');
+        Directory('${SL.getIt<Settings>().cacheDir.path}/upload');
 
     Random random = new Random();
     int randomNumber = random.nextInt(9000) + 1000;
 
     List<File> files = [];
 
-
     final File payloadFile =
-    await File('${SL.getIt<Settings>().cacheDir.path}/payload.json')
-        .create(recursive: true);
+        await File('${SL.getIt<Settings>().cacheDir.path}/payload.json')
+            .create(recursive: true);
 
     // Pacakge all the data we need to send into a json file
     final payload = {
@@ -329,13 +318,18 @@ class Moto extends ChangeNotifier {
         }
       });
     }
-}
+  }
 
   Future<void> processDataQueues() async {
-     if (accelQueue.length > 0 || gpsQueue.length > 0) {
-      Directory uploadDir =
-          Directory('${SL.getIt<Settings>().cacheDir.path}/upload');
+    FLog.info(
+        className: "processDataQueues",
+        methodName: "ProcessData",
+        text: "Starting data upload server");
 
+    Directory uploadDir =
+        Directory('${SL.getIt<Settings>().cacheDir.path}/upload');
+
+    if (accelQueue.length > 0 || gpsQueue.length > 0) {
       List<dynamic> gList = new List<dynamic>();
       List<dynamic> aList = new List<dynamic>();
 
@@ -388,17 +382,26 @@ class Moto extends ChangeNotifier {
         // Move file to upload directory
         await zipFile.rename(
             '${SL.getIt<Settings>().cacheDir.path}/upload/${randomNumber.toString()}.zip');
-
-        // Don't follow links and dont scan sub-folders
-        uploadDir.list(recursive: false, followLinks: false).listen((e) async {
-          // TODO UPLOAD ALL FILES IN DIRECTORY INCLUDING LOGS
-          // Only upload if we have internet connection
-          var isOnlineNow = await ConnectivityUtils.instance.isPhoneConnected();
-          if (isOnlineNow) {
-            await upload_delete(SL.getIt<Settings>().databaseURL, e.path);
-          }
-        });
       }
+    } else {
+      FLog.info(
+          className: "processDataQueues",
+          methodName: "ProcessData",
+          text: "No data in queue");
     }
+    // Don't follow links and dont scan sub-folders
+    uploadDir.list(recursive: false, followLinks: false).listen((e) async {
+      // TODO UPLOAD ALL FILES IN DIRECTORY INCLUDING LOGS
+      // Only upload if we have internet connection
+      var isOnlineNow = await ConnectivityUtils.instance.isPhoneConnected();
+      if (isOnlineNow) {
+        await upload_delete(SL.getIt<Settings>().databaseURL, e.path);
+      } else {
+        FLog.info(
+            className: "processDataQueues",
+            methodName: "ProcessData",
+            text: "No internet connection to upload file: " + e.path);
+      }
+    });
   }
 }
