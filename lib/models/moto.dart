@@ -200,8 +200,9 @@ class Moto extends ChangeNotifier {
           // Add to processing queue
           gpsQueue.add(p);
 
-          // Add marker to map if distance > distanec filter
-          if (speed > SL.getIt<Settings>().accelMinSpeed) {
+          // Add marker to map if distance > distance filter
+          // only add marker if map is switched on in settings
+          if (speed > SL.getIt<Settings>().accelMinSpeed && SL.getIt<Settings>().showMap) {
             var cm = CircleMarker(
                 radius: 5,
                 color: Colors.blue,

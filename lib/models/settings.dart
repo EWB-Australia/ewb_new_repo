@@ -27,6 +27,7 @@ class Settings extends ChangeNotifier {
   this.accelSamplesPerSecond = 30
   });
 
+  // These settings need to persist and are saved to shared prefers.
   String moto_uid;
   String authCode;
   String databaseURL = "https://kk9t74j5th.execute-api.ap-southeast-1.amazonaws.com/dev";
@@ -43,8 +44,11 @@ class Settings extends ChangeNotifier {
   int exportLogsDelay = Duration(hours: 1).inSeconds;
   int accelMinSpeed = 15;
   double distanceFilter = 10.0;
-  int accelSamplesPerSecond = 60;
+  int accelSamplesPerSecond = 30;
+
   SharedPreferences prefs;
+
+  // These settings don't need to persist
   Directory tmpDir;
   Directory cacheDir;
   Vector3 gravityVector = Vector3(0, 0, 9.81);
