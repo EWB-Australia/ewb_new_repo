@@ -15,10 +15,17 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage>
     with AutomaticKeepAliveClientMixin<SettingsPage> {
+
+  TextEditingController _textFieldController = TextEditingController();
+  String codeDialog;
+  String valueText = SL.getIt<Settings>().moto_name;
+
   @override
   void initState() {
+    _textFieldController = new TextEditingController(text: SL.getIt<Settings>().moto_name);
     super.initState();
   }
+
 
   Widget build(BuildContext context) {
     return Scaffold(
@@ -60,6 +67,24 @@ class _SettingsPageState extends State<SettingsPage>
                 )
               ],
             ),
+            Row(children: <Widget>[
+              Flexible(
+                child: ListTile(
+                  leading: Icon(Icons.directions_car_outlined),
+                  title: Text('Moto name'),
+                  subtitle: Text(valueText ?? "NOT SET"),
+                  trailing: RaisedButton(
+                    color: Colors.yellow,
+                    child: Text("Edit"),
+                    onPressed: () {
+                      setState(() {
+                        _displayTextInputDialog(context);
+                      });
+                    },
+                  ),
+                ),
+              ),
+            ]),
             const Divider(
               color: Colors.black,
               height: 20,
@@ -127,10 +152,11 @@ class _SettingsPageState extends State<SettingsPage>
                     onChanged: (bool value) {
                       setState(() {
                         SL.getIt<Settings>().sleepMode = value;
-                        value ? SL.sleepModeOn():SL.sleepModeOff();
+                        value ? SL.sleepModeOn() : SL.sleepModeOff();
                       });
                     },
-                    secondary: const Icon(Icons.airline_seat_legroom_extra_outlined),
+                    secondary:
+                        const Icon(Icons.airline_seat_legroom_extra_outlined),
                   ),
                 )
               ],
@@ -153,7 +179,8 @@ class _SettingsPageState extends State<SettingsPage>
                   SL.getIt<Settings>().saveToPrefs();
                 },
               ),
-            ),ListTile(
+            ),
+            ListTile(
               leading: Icon(Icons.vpn_key_outlined),
               title: Text('Clear auth/settings (force QR rescan)'),
               trailing: RaisedButton(
@@ -189,6 +216,11 @@ class _SettingsPageState extends State<SettingsPage>
               subtitle: Text(SL.getIt<Moto>().uid ?? "NONE"),
             ),
             ListTile(
+              leading: Icon(Icons.directions_car_outlined),
+              title: Text('App version'),
+              subtitle: Text(SL.getIt<Settings>().packageInfo.version ?? "NONE"),
+            ),
+            ListTile(
               leading: Icon(Icons.vpn_key_outlined),
               title: Text('Auth key'),
               subtitle: Text(SL.getIt<Settings>().authCode ?? "NONE"),
@@ -196,16 +228,77 @@ class _SettingsPageState extends State<SettingsPage>
             ListTile(
               leading: Icon(Icons.cloud_upload_outlined),
               title: Text('Uploaded data'),
-              subtitle: Text(filesize(SL.getIt<Settings>().bytesUploaded) ?? "---"),
+              subtitle:
+                  Text(filesize(SL.getIt<Settings>().bytesUploaded) ?? "---"),
+            ),
+            ListTile(
+              leading: Icon(Icons.disc_full_outlined),
+              title: Text('GPS Q size'),
+              subtitle:
+                  Text(SL.getIt<Moto>().gpsQueue.length.toString() ?? "---"),
+            ),
+            ListTile(
+              leading: Icon(Icons.disc_full_outlined),
+              title: Text('Accelerometer Q size'),
+              subtitle:
+                  Text(SL.getIt<Moto>().accelQueue.length.toString() ?? "---"),
             ),
             ListTile(
               leading: Icon(Icons.timer),
               title: Text('Data process frequency (seconds)'),
-              subtitle: Text(SL.getIt<Settings>().dataProcessFrequency.toString() ?? "NONE"),
+              subtitle: Text(
+                  SL.getIt<Settings>().dataProcessFrequency.toString() ??
+                      "NONE"),
             ),
           ],
-        )
-    );
+        ));
+  }
+
+
+
+  Future<void> _displayTextInputDialog(BuildContext context) async {
+    return showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text('Moto name'),
+            content: TextField(
+              onChanged: (value) {
+                setState(() {
+                  SL.getIt<Moto>().name = value;
+                });
+              },
+              controller: _textFieldController,
+              decoration: InputDecoration(hintText: "Moto name"),
+            ),
+            actions: <Widget>[
+              FlatButton(
+                color: Colors.red,
+                textColor: Colors.white,
+                child: Text('CANCEL'),
+                onPressed: () {
+                  setState(() {
+                    Navigator.pop(context);
+                  });
+                },
+              ),
+              FlatButton(
+                color: Colors.green,
+                textColor: Colors.white,
+                child: Text('OK'),
+                onPressed: () {
+                  setState(() {
+                    valueText = _textFieldController.text;
+                    SL.getIt<Moto>().name = _textFieldController.text;
+                    SL.getIt<Settings>().moto_name = _textFieldController.text;
+                    SL.getIt<Settings>().saveToPrefs();
+                    Navigator.pop(context);
+                  });
+                },
+              ),
+            ],
+          );
+        });
   }
 
   @override

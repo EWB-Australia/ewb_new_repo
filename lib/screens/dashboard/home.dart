@@ -72,29 +72,23 @@ class _HomeState extends State<Home> {
 
     return new Scaffold(
         appBar: new AppBar(
-          title: new Text('Dashboard'),
+          title: new Text(
+              'App version: ${SL.getIt<Settings>().packageInfo.version}'),
           leading: Icon(Icons.dashboard),
           actions: [
-            Padding(
-                padding: EdgeInsets.all(15),
-                child: ElevatedButton.icon(
-                  label: SL.getIt<Settings>().isForegroundService
-                      ? Text("Stop")
-                      : Text("Record"),
-                  icon: SL.getIt<Settings>().isForegroundService
-                      ? Icon(Icons.stop)
-                      : Icon(Icons.play_arrow),
-                  onPressed: () {
-                    setState(() {
-                      SL.toggleForegroundServiceOnOff();
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    primary: SL.getIt<Settings>().isForegroundService
-                        ? Colors.redAccent
-                        : Colors.lightGreen,
-                  ),
-                )),
+            Row(children: [
+            Text("Record", style: TextStyle(fontSize: 18),),
+              Switch(
+                value: SL.getIt<Settings>().isForegroundService,
+                onChanged: (value) {
+                  setState(() {
+                    SL.toggleForegroundServiceOnOff(value);
+                  });
+                },
+                activeTrackColor: Colors.lightGreenAccent,
+                activeColor: Colors.green,
+              ),
+          ],)
           ],
         ),
         body: ConnectivityWidget(

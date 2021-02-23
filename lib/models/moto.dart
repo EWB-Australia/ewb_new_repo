@@ -22,11 +22,12 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong/latlong.dart';
 import '../utils/service_locator.dart' as SL;
 import 'package:connectivity_widget/connectivity_widget.dart';
+import 'package:uuid/uuid.dart';
 
 class Moto extends ChangeNotifier {
   Moto({
     @required this.uid,
-    this.name,
+    @required this.name,
     this.rego,
   });
 
@@ -202,21 +203,27 @@ class Moto extends ChangeNotifier {
 
           // Add marker to map if distance > distance filter
           // only add marker if map is switched on in settings
-          if (speed > SL.getIt<Settings>().accelMinSpeed && SL.getIt<Settings>().showMap) {
-            var cm = CircleMarker(
-                radius: 5,
-                color: Colors.blue,
-                point: LatLng(p.latitude, p.longitude));
-            markers.add(cm);
-          } else {
-            var cm = CircleMarker(
-                radius: 5,
-                color: Colors.amber,
-                point: LatLng(p.latitude, p.longitude));
-            markers.add(cm);
+          if (SL
+              .getIt<Settings>()
+              .showMap) {
+            // Blue marker if accelerometer readings are being recorded, otherwise yellow
+            if (speed > SL
+                .getIt<Settings>()
+                .accelMinSpeed) {
+              var cm = CircleMarker(
+                  radius: 5,
+                  color: Colors.blue,
+                  point: LatLng(p.latitude, p.longitude));
+              markers.add(cm);
+            } else {
+              var cm = CircleMarker(
+                  radius: 5,
+                  color: Colors.amber,
+                  point: LatLng(p.latitude, p.longitude));
+              markers.add(cm);
+            }
           }
         }
-
         speed = (position.speed * 3.6).toInt();
         location = LatLng(position.latitude, position.longitude);
         heading = position.heading;
@@ -282,6 +289,8 @@ class Moto extends ChangeNotifier {
     // Pacakge all the data we need to send into a json file
     final payload = {
       'moto': uid,
+      'moto_name': name,
+      'app_version': SL.getIt<Settings>().packageInfo.version,
       'trip': uid,
       'time': DateTime.now().toIso8601String(),
       'batteryLevel': await getBattery() ?? '',
@@ -331,11 +340,14 @@ class Moto extends ChangeNotifier {
         Directory('${SL.getIt<Settings>().cacheDir.path}/upload');
 
     if (accelQueue.length > 0 || gpsQueue.length > 0) {
+      
+      // Create unique id for filename
+      var uuid = Uuid();
+      var uuidString = uuid.v4();
+      
       List<dynamic> gList = new List<dynamic>();
       List<dynamic> aList = new List<dynamic>();
-
-      Random random = new Random();
-      int randomNumber = random.nextInt(9000) + 1000;
+      
 
       List<File> files = [];
 
@@ -350,13 +362,15 @@ class Moto extends ChangeNotifier {
       }
 
       final File payloadFile =
-          await File('${SL.getIt<Settings>().cacheDir.path}/payload.json')
+          await File('${SL.getIt<Settings>().cacheDir.path}/json/${uuidString}.json')
               .create(recursive: true);
 
       // Pacakge all the data we need to send into a json file
       final payload = {
         'moto': uid,
+        'moto_name': name,
         'trip': uid,
+        'app_version': SL.getIt<Settings>().packageInfo.version,
         'batteryLevel': await getBattery() ?? '',
         'gps_values': gList,
         'acceleration_values': aList
@@ -370,7 +384,7 @@ class Moto extends ChangeNotifier {
         print("compressing");
 
         final zipFile = createZipFile(
-            '${SL.getIt<Settings>().cacheDir.path}/${randomNumber.toString()}.zip');
+            '${SL.getIt<Settings>().cacheDir.path}/upload/${uuidString}.zip');
 
         // Try to create zip file
         await ZipFile.createFromFiles(
@@ -381,8 +395,8 @@ class Moto extends ChangeNotifier {
             zipFile: zipFile);
 
         // Move file to upload directory
-        await zipFile.rename(
-            '${SL.getIt<Settings>().cacheDir.path}/upload/${randomNumber.toString()}.zip');
+        //await zipFile.rename(
+        //    '${SL.getIt<Settings>().cacheDir.path}/upload/${randomNumber.toString()}.zip');
       }
     } else {
       FLog.info(
@@ -390,9 +404,9 @@ class Moto extends ChangeNotifier {
           methodName: "ProcessData",
           text: "No data in queue");
     }
+
     // Don't follow links and dont scan sub-folders
     uploadDir.list(recursive: false, followLinks: false).listen((e) async {
-      // TODO UPLOAD ALL FILES IN DIRECTORY INCLUDING LOGS
       // Only upload if we have internet connection
       var isOnlineNow = await ConnectivityUtils.instance.isPhoneConnected();
       if (isOnlineNow) {

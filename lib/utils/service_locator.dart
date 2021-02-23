@@ -23,51 +23,58 @@ Future<void> setupConfig() async {
   AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
   var uid = androidInfo.androidId;
 
-  // Check if previous settings exist
+  // Check if previous settings exist in shared preferences
   if (prefs.getString("settings") == null) {
     // Settings don't exist, create object
     FLog.info(
         className: "init",
         methodName: "service locator",
         text: "Settings doesn't exist in shared prefs");
-    getIt.registerSingleton<Settings>(Settings(moto_uid: uid));
+    getIt.registerSingleton<Settings>(Settings(moto_uid: uid, moto_name: uid));
   } else {
     FLog.info(
         className: "init",
         methodName: "service locator",
         text: "Settings key exists, try to create object");
+    // Settings exist so try and convert json settings string in shared prefs to Settings object
     try {
       var s = Settings.fromRawJson(prefs.getString('settings'));
       getIt.registerSingleton<Settings>(s);
     } catch (err) {
+      // There was an error converting string to object, possibly the string was from a previous version
+      // Create new string and save to shared prefs
       FLog.info(
           className: "init",
           methodName: "service locator",
           text: "Failed to read settings json string");
-      getIt.registerSingleton<Settings>(Settings(moto_uid: uid));
+      getIt.registerSingleton<Settings>(Settings(moto_uid: uid, moto_name: uid));
     }
   }
 
-  // Create moto object and register in state
   FLog.info(
       className: "init",
       methodName: "service locator",
       text: "Vehicle ID ${androidInfo.androidId}");
-  getIt.registerSingleton<Moto>(Moto(uid: uid));
 
+  // Wait for getIt to finish
   await getIt.allReady();
 
+  // Now register a Moto object
+  getIt.registerSingleton<Moto>(Moto(uid: uid, name: getIt<Settings>().moto_name ?? uid));
+
+  // Wait for getIt to finish
+  await getIt.allReady();
+
+  // Save the final string back to shared prefs
   getIt<Settings>().saveToPrefs();
 
 }
 
-void toggleForegroundServiceOnOff() async {
-  final fgsIsRunning = await ForegroundService.foregroundServiceIsStarted();
-  String appMessage;
+void toggleForegroundServiceOnOff(value) async {
+  //final fgsIsRunning = await ForegroundService.foregroundServiceIsStarted();
 
-  if (fgsIsRunning) {
+  if (!value) {
     await ForegroundService.stopForegroundService();
-    appMessage = "Stopped foreground service.";
     getIt<Moto>().sensorUnSubscribe();
     // Pause data process timer
     getIt<Settings>().dataProcessTimer.cancel();
@@ -84,7 +91,7 @@ void toggleForegroundServiceOnOff() async {
       getIt<Moto>().processDataQueues();
     });
 
-    appMessage = "Started foreground service.";
+
     if (getIt<Settings>().sensorAccelOnly == true) {
       getIt<Moto>().sensorSubscribeAccelOnly();
     } else {

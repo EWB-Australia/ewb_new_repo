@@ -15,6 +15,7 @@ import 'package:bottom_navy_bar/bottom_navy_bar.dart';
 import 'package:foreground_service/foreground_service.dart';
 import '../utils/service_locator.dart' as SL;
 import 'package:motion_sensors/motion_sensors.dart';
+import 'package:package_info/package_info.dart';
 
 SharedPreferences prefs;
 
@@ -53,10 +54,13 @@ class _DashboardState extends State<Dashboard> {
       SL.getIt<Settings>().setOffline();
     }
 
+    SL.getIt<Settings>().packageInfo = await PackageInfo.fromPlatform();
+
     // Setup directories
     await SL.getIt<Settings>().setDirectories();
     await createFolder('${SL.getIt<Settings>().cacheDir.path }/upload/');
     await createFolder('${SL.getIt<Settings>().cacheDir.path }/uploaded/');
+    await createFolder('${SL.getIt<Settings>().cacheDir.path }/json/');
 
     // Set up gps
     SL.getIt<Moto>().gpsSubscribe();

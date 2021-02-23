@@ -62,8 +62,6 @@ Future<void> upload_delete(url, filePath) async {
       if (e == 200) {
         print("Delete file ${basename(filePath)}");
         await delete_file(filePath);
-        //Don't delete, move file to processed directory
-
       } else {
         FLog.error(className: "moto",
             methodName: "uploadfile", text: "Error uploading file: ${basename(filePath)}}");

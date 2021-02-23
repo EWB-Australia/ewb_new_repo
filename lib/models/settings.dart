@@ -6,11 +6,13 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
+import 'package:package_info/package_info.dart';
 
 class Settings extends ChangeNotifier {
   Settings({
   @required this.moto_uid,
-  this.authCode,
+    this.moto_name,
+    this.authCode,
   this.databaseURL = "https://kk9t74j5th.execute-api.ap-southeast-1.amazonaws.com/dev",
   this.bytesUploaded = 0,
   this.isOnline = false,
@@ -29,6 +31,7 @@ class Settings extends ChangeNotifier {
 
   // These settings need to persist and are saved to shared prefers.
   String moto_uid;
+  String moto_name;
   String authCode;
   String databaseURL = "https://kk9t74j5th.execute-api.ap-southeast-1.amazonaws.com/dev";
   int bytesUploaded = 0;
@@ -52,6 +55,7 @@ class Settings extends ChangeNotifier {
   Directory tmpDir;
   Directory cacheDir;
   Vector3 gravityVector = Vector3(0, 0, 9.81);
+  PackageInfo packageInfo;
 
   bool sleepMode = false;
 
@@ -65,6 +69,7 @@ class Settings extends ChangeNotifier {
   factory Settings.fromJson(Map<String, dynamic> json) =>
       Settings(
         moto_uid: json["moto_uid"],
+        moto_name: json["moto_name"],
         authCode: json["authCode"],
         bytesUploaded: json["bytesUploaded"],
         databaseURL: json["databaseURL"],
@@ -85,6 +90,7 @@ class Settings extends ChangeNotifier {
   Map<String, dynamic> toJson() =>
       {
         "moto_uid": moto_uid,
+        "moto_name": moto_name,
         "authCode": authCode,
         "bytesUploaded": bytesUploaded,
         "databaseURL": databaseURL,
