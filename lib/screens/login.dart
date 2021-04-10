@@ -137,7 +137,7 @@ class _EWBloginState extends State<EWBlogin> {
     // Validate auth token with server,
     FLog.info(text: "Checking auth-token with server");
     var response = await http.get(
-      'https://ewb.thinktransit.com.au/validate_auth_code/',
+      'https://be.ewbaus.org/validate_auth_code/',
       // Send authorization headers to the backend.
       headers: {'auth-token': result},
     );

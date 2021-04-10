@@ -95,7 +95,7 @@ class Moto extends ChangeNotifier {
         if (speed >= SL.getIt<Settings>().accelMinSpeed) {
           // Create an accelerometer object from event data
           Accel ac =
-              Accel(time: DateTime.now(), x: xV, y: xV, z: xV, moto: uid);
+              Accel(time: DateTime.now(), x: xV, y: yV, z: zV, moto: uid);
 
           accelQueue.add(ac);
           isRecordingAccel = true;
@@ -291,9 +291,9 @@ class Moto extends ChangeNotifier {
       'moto': uid,
       'moto_name': name,
       'app_version': SL.getIt<Settings>().packageInfo.version,
+      'batteryLevel': await getBattery() ?? '',
       'trip': uid,
       'time': DateTime.now().toIso8601String(),
-      'batteryLevel': await getBattery() ?? '',
     };
     // Write the file.
     payloadFile.writeAsStringSync(json.encode(payload));
@@ -373,7 +373,8 @@ class Moto extends ChangeNotifier {
         'app_version': SL.getIt<Settings>().packageInfo.version,
         'batteryLevel': await getBattery() ?? '',
         'gps_values': gList,
-        'acceleration_values': aList
+        'acceleration_values': aList,
+        'time': DateTime.now().toIso8601String()
       };
       // Write the file.
       payloadFile.writeAsStringSync(json.encode(payload));
