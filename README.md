@@ -22,7 +22,7 @@ The application is distributed from a private repository using the [F-Droid](htt
 ####  4. Click on repositories
 ![Install-03.jpg](assets/images/install/Install-03.jpg)
 
-####  5. Add new repository with url htts://ewb.thinktransit.com.au/fdroid/
+####  5. Add new repository with url htts://repo.ewbaus.org/fdroid/
 ![Install-04.jpg](assets/images/install/Install-04.jpg)
 
 ####  6. Go back to home back and search for EWB
